@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { ExternalLink, X, Plus, Folder, FolderOpen, GripVertical } from 'lucide-react';
+import { ExternalLink, X, Plus, Folder, FolderOpen } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark, PinnedCard, Group } from '../types';
 
@@ -401,7 +401,7 @@ function PinnedCardItem({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      className={`group relative bg-white rounded-xl shadow-sm border transition-all overflow-hidden cursor-pointer ${
+      className={`group relative bg-white rounded-xl shadow-sm border transition-all overflow-hidden cursor-grab active:cursor-grabbing ${
         isDragging ? 'opacity-50 rotate-2' : ''
       } ${
         isDragOver ? 'border-blue-500 ring-2 ring-blue-200 scale-105' : 'border-gray-200 hover:shadow-md hover:border-blue-300'
@@ -410,16 +410,32 @@ function PinnedCardItem({
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleOpenLink}
     >
-      {/* Drag Handle */}
-      <div 
-        className="absolute top-2 right-2 p-1.5 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing z-20"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical size={16} />
+      {/* Actions - Top Right */}
+      <div className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity z-20 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+        <a
+          href={card.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-gray-100"
+          title="打开链接"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ExternalLink size={16} />
+        </a>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100"
+          title="移除卡片"
+        >
+          <X size={16} />
+        </button>
       </div>
 
       {/* Card Header */}
-      <div className="flex items-start justify-between p-4 pr-10">
+      <div className="flex items-start p-4 pr-14">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
             {card.icon ? (
@@ -451,7 +467,7 @@ function PinnedCardItem({
 
       {/* Tags */}
       {card.tags && card.tags.length > 0 && (
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-4">
           <div className="flex flex-wrap gap-1">
             {card.tags.slice(0, 3).map((tag) => (
               <span
@@ -469,33 +485,6 @@ function PinnedCardItem({
           </div>
         </div>
       )}
-
-      {/* Actions Footer */}
-      <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-        <span className="text-xs text-gray-400">#{card.sort_order || 0}</span>
-        <div className={`flex items-center gap-1 transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-          <a
-            href={card.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-1.5 text-gray-400 hover:text-blue-600 rounded"
-            title="打开链接"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ExternalLink size={14} />
-          </a>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove();
-            }}
-            className="p-1.5 text-gray-400 hover:text-red-600 rounded"
-            title="移除卡片"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
