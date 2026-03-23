@@ -313,11 +313,16 @@ function PinnedCardItem({ card, onRemove }: PinnedCardItemProps) {
     }
   };
 
+  const handleOpenLink = () => {
+    window.open(card.url, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div
-      className="group relative bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all overflow-hidden"
+      className="group relative bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all overflow-hidden cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={handleOpenLink}
     >
       {/* Card Header */}
       <div className="flex items-start justify-between p-4">
@@ -343,19 +348,22 @@ function PinnedCardItem({ card, onRemove }: PinnedCardItemProps) {
         </div>
         
         {/* Actions */}
-        <div className={`flex items-center gap-1 transition-opacity z-10 relative ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+        <div 
+          className={`flex items-center gap-1 transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+          onClick={(e) => e.stopPropagation()} // Prevent card click when clicking buttons
+        >
           <a
             href={card.url}
             target="_blank"
             rel="noopener noreferrer"
             className="p-1.5 text-gray-400 hover:text-blue-600 rounded"
             title="打开链接"
+            onClick={(e) => e.stopPropagation()}
           >
             <ExternalLink size={16} />
           </a>
           <button
             onClick={(e) => {
-              e.preventDefault();
               e.stopPropagation();
               onRemove();
             }}
@@ -394,15 +402,6 @@ function PinnedCardItem({ card, onRemove }: PinnedCardItemProps) {
           </div>
         </div>
       )}
-
-      {/* Click to open - only covers the area below the header */}
-      <a
-        href={card.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute inset-0 -z-10"
-        aria-label={`打开 ${card.title}`}
-      />
     </div>
   );
 }

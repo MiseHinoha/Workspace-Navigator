@@ -35,6 +35,13 @@ interface WorkspaceState {
   setActiveGroup: (id: string | null) => void;
 }
 
+// Helper to extract unique tags from bookmarks
+const extractTags = (bookmarks: Bookmark[]): string[] => {
+  const tagSet = new Set<string>();
+  bookmarks.forEach(b => b.tags.forEach(t => tagSet.add(t)));
+  return Array.from(tagSet).sort();
+};
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   workspaces: [],
   bookmarks: [],
@@ -99,32 +106,147 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   createBookmark: async (data) => {
-    await bookmarkApi.create(data);
-    await get().fetchBookmarks();
+    const { bookmarks, frequentBookmarks } = get();
+    
+    // Optimistic update: generate temp ID and add to state immediately
+    const tempId = `temp-${Date.now()}`;
+    const newBookmark: Bookmark = {
+      id: tempId,
+      user_id: 'current-user',
+      title: data.title,
+      url: data.url,
+      description: data.description || '',
+      icon: data.icon || '',
+      tags: data.tags,
+      is_frequent: data.is_frequent || false,
+      frequent_order: data.is_frequent ? frequentBookmarks.length + 1 : 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    
+    set({ 
+      bookmarks: [...bookmarks, newBookmark],
+      tags: extractTags([...bookmarks, newBookmark])
+    });
+    
     if (data.is_frequent) {
-      await get().fetchFrequentBookmarks();
+      set({ frequentBookmarks: [...frequentBookmarks, newBookmark] });
     }
-    await get().fetchTags();
+    
+    try {
+      // Send API request
+      const { data: createdBookmark } = await bookmarkApi.create(data);
+      
+      // Replace temp bookmark with real one
+      set({ 
+        bookmarks: get().bookmarks.map(b => b.id === tempId ? createdBookmark : b),
+        tags: extractTags(get().bookmarks.map(b => b.id === tempId ? createdBookmark : b))
+      });
+      
+      if (data.is_frequent) {
+        set({ 
+          frequentBookmarks: get().frequentBookmarks.map(b => b.id === tempId ? createdBookmark : b)
+        });
+      }
+    } catch (error) {
+      // Revert on error
+      set({ 
+        bookmarks: get().bookmarks.filter(b => b.id !== tempId),
+        tags: extractTags(get().bookmarks.filter(b => b.id !== tempId))
+      });
+      if (data.is_frequent) {
+        set({ frequentBookmarks: get().frequentBookmarks.filter(b => b.id !== tempId) });
+      }
+      throw error;
+    }
   },
 
   updateBookmark: async (id, data) => {
-    await bookmarkApi.update(id, data);
-    await get().fetchBookmarks();
-    await get().fetchFrequentBookmarks();
-    await get().fetchTags();
+    const { bookmarks, frequentBookmarks } = get();
+    const bookmark = bookmarks.find(b => b.id === id);
+    if (!bookmark) return;
+    
+    // Optimistic update
+    const updatedBookmark = { ...bookmark, ...data, updated_at: new Date().toISOString() };
+    set({ 
+      bookmarks: bookmarks.map(b => b.id === id ? updatedBookmark : b),
+      tags: extractTags(bookmarks.map(b => b.id === id ? updatedBookmark : b))
+    });
+    
+    if (bookmark.is_frequent || data.is_frequent !== undefined) {
+      set({ 
+        frequentBookmarks: data.is_frequent === false 
+          ? frequentBookmarks.filter(b => b.id !== id)
+          : frequentBookmarks.map(b => b.id === id ? updatedBookmark : b)
+      });
+    }
+    
+    try {
+      await bookmarkApi.update(id, data);
+    } catch (error) {
+      // Revert on error
+      await get().fetchBookmarks();
+      await get().fetchFrequentBookmarks();
+      await get().fetchTags();
+      throw error;
+    }
   },
 
   deleteBookmark: async (id) => {
-    await bookmarkApi.delete(id);
-    await get().fetchBookmarks();
-    await get().fetchFrequentBookmarks();
-    await get().fetchTags();
+    const { bookmarks, frequentBookmarks, pinnedCards } = get();
+    
+    // Optimistic update
+    set({ 
+      bookmarks: bookmarks.filter(b => b.id !== id),
+      frequentBookmarks: frequentBookmarks.filter(b => b.id !== id),
+      tags: extractTags(bookmarks.filter(b => b.id !== id))
+    });
+    
+    // Also remove from pinned cards
+    const newPinnedCards: Record<string, PinnedCard[]> = {};
+    Object.entries(pinnedCards).forEach(([key, cards]) => {
+      newPinnedCards[key] = cards.filter(c => c.bookmark_id !== id);
+    });
+    set({ pinnedCards: newPinnedCards });
+    
+    try {
+      await bookmarkApi.delete(id);
+    } catch (error) {
+      // Revert on error
+      await get().fetchBookmarks();
+      await get().fetchFrequentBookmarks();
+      await get().fetchTags();
+      throw error;
+    }
   },
 
   toggleFrequent: async (id, isFrequent) => {
-    await bookmarkApi.update(id, { is_frequent: isFrequent });
-    await get().fetchBookmarks();
-    await get().fetchFrequentBookmarks();
+    const { bookmarks, frequentBookmarks } = get();
+    const bookmark = bookmarks.find(b => b.id === id);
+    if (!bookmark) return;
+    
+    // Optimistic update
+    const updatedBookmark = { 
+      ...bookmark, 
+      is_frequent: isFrequent,
+      frequent_order: isFrequent ? frequentBookmarks.length + 1 : 0
+    };
+    
+    set({ 
+      bookmarks: bookmarks.map(b => b.id === id ? updatedBookmark : b),
+      frequentBookmarks: isFrequent 
+        ? [...frequentBookmarks, updatedBookmark]
+        : frequentBookmarks.filter(b => b.id !== id)
+    });
+    
+    try {
+      await bookmarkApi.update(id, { is_frequent: isFrequent });
+    } catch (error) {
+      // Revert on error
+      await get().fetchBookmarks();
+      await get().fetchFrequentBookmarks();
+      throw error;
+    }
   },
 
   createGroup: async (workspaceId, name, description) => {
@@ -150,8 +272,44 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   pinBookmark: async (workspaceId, bookmarkId, groupId) => {
-    await workspaceApi.addCard(workspaceId, bookmarkId, groupId);
-    await get().fetchPinnedCards(workspaceId, groupId);
+    const { pinnedCards, bookmarks } = get();
+    const bookmark = bookmarks.find(b => b.id === bookmarkId);
+    if (!bookmark) return;
+    
+    const key = `${workspaceId}-${groupId || 'null'}`;
+    const cards = pinnedCards[key] || [];
+    
+    // Optimistic update
+    const tempCard: PinnedCard = {
+      id: `temp-${Date.now()}`,
+      workspace_id: workspaceId,
+      bookmark_id: bookmarkId,
+      user_id: 'current-user',
+      group_id: groupId || null,
+      sort_order: cards.length + 1,
+      title: bookmark.title,
+      url: bookmark.url,
+      description: bookmark.description,
+      icon: bookmark.icon,
+      tags: bookmark.tags,
+      created_at: new Date().toISOString(),
+    };
+    
+    set((state) => ({
+      pinnedCards: { 
+        ...state.pinnedCards, 
+        [key]: [...(state.pinnedCards[key] || []), tempCard] 
+      },
+    }));
+    
+    try {
+      await workspaceApi.addCard(workspaceId, bookmarkId, groupId);
+      await get().fetchPinnedCards(workspaceId, groupId);
+    } catch (error) {
+      // Revert on error
+      await get().fetchPinnedCards(workspaceId, groupId);
+      throw error;
+    }
   },
 
   moveCardToGroup: async (workspaceId, cardId, groupId) => {
@@ -161,9 +319,24 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   unpinCard: async (workspaceId, cardId) => {
-    await workspaceApi.removeCard(workspaceId, cardId);
-    const { activeGroupId } = get();
-    await get().fetchPinnedCards(workspaceId, activeGroupId);
+    const { pinnedCards, activeGroupId } = get();
+    const key = `${workspaceId}-${activeGroupId || 'null'}`;
+    
+    // Optimistic update
+    set((state) => ({
+      pinnedCards: { 
+        ...state.pinnedCards, 
+        [key]: (state.pinnedCards[key] || []).filter(c => c.id !== cardId)
+      },
+    }));
+    
+    try {
+      await workspaceApi.removeCard(workspaceId, cardId);
+    } catch (error) {
+      // Revert on error
+      await get().fetchPinnedCards(workspaceId, activeGroupId);
+      throw error;
+    }
   },
 
   setActiveWorkspace: (id) => {

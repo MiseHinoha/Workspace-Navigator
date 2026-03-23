@@ -96,7 +96,7 @@ export function BookmarksPage() {
 
   const handleToggleFrequent = async (bookmark: Bookmark) => {
     await toggleFrequent(bookmark.id, !bookmark.is_frequent);
-    await fetchFrequentBookmarks();
+    // No need to fetch again - optimistic update in store
   };
 
   return (
