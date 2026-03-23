@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { ExternalLink, X, Plus, Folder, FolderOpen } from 'lucide-react';
+import { X, Plus, Folder, FolderOpen } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark, PinnedCard, Group } from '../types';
 
@@ -410,29 +410,17 @@ function PinnedCardItem({
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleOpenLink}
     >
-      {/* Actions - Top Right */}
-      <div className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity z-20 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-        <a
-          href={card.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-gray-100"
-          title="打开链接"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ExternalLink size={16} />
-        </a>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-          className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100"
-          title="移除卡片"
-        >
-          <X size={16} />
-        </button>
-      </div>
+      {/* Delete Button - Top Right */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        className={`absolute top-2 right-2 p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100 transition-opacity z-20 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+        title="移除卡片"
+      >
+        <X size={16} />
+      </button>
 
       {/* Card Header */}
       <div className="flex items-start p-4 pr-14">
