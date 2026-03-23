@@ -1,0 +1,80 @@
+import { useState } from 'react';
+import { Search, ChevronDown } from 'lucide-react';
+import { SEARCH_ENGINES } from '../types';
+
+export function SearchBar() {
+  const [query, setQuery] = useState('');
+  const [selectedEngine, setSelectedEngine] = useState(SEARCH_ENGINES[0]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) {
+      window.open(selectedEngine.url + encodeURIComponent(query.trim()), '_blank');
+      setQuery('');
+    }
+  };
+
+  return (
+    <form onSubmit={handleSearch} className="w-full max-w-2xl mx-auto">
+      <div className="relative flex items-center bg-white rounded-lg shadow-md border border-gray-200">
+        {/* Search Engine Selector */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-1 px-3 py-3 text-gray-600 hover:text-gray-800 border-r border-gray-200 rounded-l-lg hover:bg-gray-50 transition-colors"
+          >
+            <span>{selectedEngine.icon}</span>
+            <span className="text-sm font-medium hidden sm:inline">{selectedEngine.name}</span>
+            <ChevronDown size={14} />
+          </button>
+          
+          {isDropdownOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setIsDropdownOpen(false)}
+              />
+              <div className="absolute top-full left-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden">
+                {SEARCH_ENGINES.map((engine) => (
+                  <button
+                    key={engine.name}
+                    type="button"
+                    onClick={() => {
+                      setSelectedEngine(engine);
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
+                      selectedEngine.name === engine.name ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                    }`}
+                  >
+                    <span>{engine.icon}</span>
+                    <span>{engine.name}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Search Input */}
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={`使用 ${selectedEngine.name} 搜索...`}
+          className="flex-1 px-4 py-3 text-gray-800 placeholder-gray-400 bg-transparent border-none outline-none"
+        />
+
+        {/* Search Button */}
+        <button
+          type="submit"
+          className="p-3 text-gray-500 hover:text-blue-600 transition-colors"
+        >
+          <Search size={20} />
+        </button>
+      </div>
+    </form>
+  );
+}

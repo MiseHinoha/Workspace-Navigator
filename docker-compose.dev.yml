@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # Backend development
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: workspace-navigator-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DATA_DIR=/app/data
+      - JWT_SECRET=dev-secret-key
+
+  # Frontend development
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: workspace-navigator-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    depends_on:
+      - backend
+
+  # Mock server (for testing without backend)
+  mock:
+    build:
+      context: ./mock-server
+      dockerfile: Dockerfile
+    container_name: workspace-navigator-mock
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./mock-server:/app
+      - /app/node_modules
+    profiles:
+      - mock
