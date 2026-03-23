@@ -35,3 +35,6 @@ data/
 # Coverage
 coverage/
 .nyc_output/
+
+# Requirements
+需求.md
