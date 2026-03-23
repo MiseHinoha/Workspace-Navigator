@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { X, Search, ExternalLink, GripVertical, Bookmark } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark as BookmarkType } from '../types';
@@ -12,23 +12,64 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
   const { bookmarks, tags, fetchBookmarks, fetchTags } = useWorkspaceStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
+  const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Use ref to store onClose to avoid dependency issues
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
+  // Track previous isOpen to detect open action
+  const prevIsOpenRef = useRef(isOpen);
+  
   useEffect(() => {
-    if (isOpen) {
+    const wasOpen = prevIsOpenRef.current;
+    prevIsOpenRef.current = isOpen;
+    
+    if (isOpen && !wasOpen) {
+      // Drawer is opening - reset isClosing
+      setIsClosing(false);
       fetchBookmarks();
       fetchTags();
+    } else if (!isOpen && wasOpen && isClosing) {
+      // Drawer was closed by handleClose, wait for animation to finish then unmount
+      const timer = setTimeout(() => setIsClosing(false), 200);
+      return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, isClosing]);
 
+  const handleClose = () => {
+    if (closeTimerRef.current || isClosing) return; // Prevent double close
+    setIsClosing(true);
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null;
+      onCloseRef.current();
+    }, 200);
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+    };
+  }, []);
+  
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
+      if (e.key === 'Escape' && isOpen && !isClosing && !closeTimerRef.current) {
+        setIsClosing(true);
+        closeTimerRef.current = setTimeout(() => {
+          closeTimerRef.current = null;
+          onCloseRef.current();
+        }, 200);
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+  }, [isOpen, isClosing]);
 
   const filteredBookmarks = useMemo(() => {
     return bookmarks.filter((bookmark) => {
@@ -53,21 +94,25 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [filteredBookmarks]);
 
-  if (!isOpen) return null;
+  // When closing animation finishes, isOpen becomes false from parent
+  // Keep rendering while isClosing is true to show animation
+  if (!isOpen && !isClosing) return null;
 
   return (
     <>
-      {/* Backdrop - allows pointer events to pass through for drag */}
-      <div 
-        className="fixed inset-0 bg-black/20 z-40"
-        style={{ pointerEvents: 'none' }}
-        onClick={onClose}
-      />
+      {/* Backdrop - click to close, hide immediately when closing */}
+      {!isClosing && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-40 animate-fadeIn"
+          onClick={handleClose}
+        />
+      )}
       
-      {/* Drawer - clickable */}
+      {/* Drawer - stop propagation to prevent closing when clicking inside */}
       <div 
         className="fixed right-0 top-0 h-full w-80 bg-white shadow-2xl z-50 flex flex-col"
-        style={{ animation: 'slideInRight 0.2s ease-out' }}
+        style={{ animation: isClosing ? 'slideOutRight 0.2s ease-in forwards' : 'slideInRight 0.2s ease-out forwards' }}
+        onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
@@ -77,7 +122,7 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
             <span className="text-xs text-gray-400">({bookmarks.length})</span>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
           >
             <X size={20} />
