@@ -156,11 +156,11 @@ export function Home() {
           <WorkspaceCanvas />
         </main>
 
-        {/* Bookmark Drawer Toggle Button */}
+        {/* Bookmark Drawer Toggle Button - positioned lower to avoid overlap */}
         {!isDrawerOpen && (
           <button
             onClick={() => setIsDrawerOpen(true)}
-            className="fixed right-0 top-32 z-50 flex items-center gap-1 px-3 py-3 bg-blue-600 text-white rounded-l-xl shadow-lg hover:bg-blue-700 transition-all hover:pr-4 group"
+            className="fixed right-0 top-1/2 -translate-y-1/2 z-50 flex items-center gap-1 px-3 py-3 bg-blue-600 text-white rounded-l-xl shadow-lg hover:bg-blue-700 transition-all hover:pr-4 group"
             title="打开书签库"
           >
             <Bookmark size={20} />

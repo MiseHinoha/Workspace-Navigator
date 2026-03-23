@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Star, ChevronLeft, ChevronRight, MoreHorizontal, X, GripVertical } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, MoreHorizontal, GripVertical } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 
 export function FrequentBookmarksBar() {
@@ -38,7 +38,11 @@ export function FrequentBookmarksBar() {
 
   const handleToggleFrequent = async (id: string, isFrequent: boolean) => {
     await toggleFrequent(id, isFrequent);
-    await fetchFrequentBookmarks();
+  };
+
+  const handleCloseDropdown = () => {
+    setShowDropdown(false);
+    setIsEditing(false);
   };
 
   if (frequentBookmarks.length === 0) {
@@ -117,14 +121,13 @@ export function FrequentBookmarksBar() {
 
           {showDropdown && (
             <>
+              {/* Backdrop */}
               <div
-                className="fixed inset-0 z-40"
-                onClick={() => {
-                  setShowDropdown(false);
-                  setIsEditing(false);
-                }}
+                className="fixed inset-0 z-[60]"
+                onClick={handleCloseDropdown}
               />
-              <div className="absolute top-full right-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-2 max-h-96 overflow-y-auto">
+              {/* Dropdown - positioned below with higher z-index */}
+              <div className="absolute top-full right-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[70] py-2 max-h-80 overflow-y-auto">
                 <div className="px-3 py-2 border-b border-gray-100">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700">常用书签管理</span>
@@ -138,45 +141,47 @@ export function FrequentBookmarksBar() {
                 </div>
                 
                 <div className="py-1">
-                  {bookmarks.map((bookmark) => (
-                    <div
-                      key={bookmark.id}
-                      className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50"
-                    >
-                      {isEditing ? (
-                        <>
-                          <input
-                            type="checkbox"
-                            checked={bookmark.is_frequent}
-                            onChange={(e) => handleToggleFrequent(bookmark.id, e.target.checked)}
-                            className="w-4 h-4 text-blue-600 rounded border-gray-300"
-                          />
-                          <span className="text-sm text-gray-700 truncate flex-1">{bookmark.title}</span>
-                        </>
-                      ) : (
-                        <>
-                          {bookmark.is_frequent && (
-                            <>
-                              <GripVertical size={14} className="text-gray-300" />
-                              <a
-                                href={bookmark.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 flex-1"
-                              >
-                                {bookmark.icon ? (
-                                  <img src={bookmark.icon} alt="" className="w-4 h-4 object-contain" />
-                                ) : (
-                                  <span>🔗</span>
-                                )}
-                                <span className="text-sm text-gray-700 truncate">{bookmark.title}</span>
-                              </a>
-                            </>
+                  {isEditing ? (
+                    // Edit mode: show all bookmarks
+                    bookmarks.map((bookmark) => (
+                      <label
+                        key={bookmark.id}
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={bookmark.is_frequent}
+                          onChange={(e) => handleToggleFrequent(bookmark.id, e.target.checked)}
+                          className="w-4 h-4 text-blue-600 rounded border-gray-300"
+                        />
+                        <span className="text-sm text-gray-700 truncate flex-1">{bookmark.title}</span>
+                      </label>
+                    ))
+                  ) : (
+                    // View mode: only show frequent bookmarks
+                    frequentBookmarks.map((bookmark) => (
+                      <div
+                        key={bookmark.id}
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50"
+                      >
+                        <GripVertical size={14} className="text-gray-300" />
+                        <a
+                          href={bookmark.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 flex-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {bookmark.icon ? (
+                            <img src={bookmark.icon} alt="" className="w-4 h-4 object-contain" />
+                          ) : (
+                            <span>🔗</span>
                           )}
-                        </>
-                      )}
-                    </div>
-                  ))}
+                          <span className="text-sm text-gray-700 truncate">{bookmark.title}</span>
+                        </a>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </>
