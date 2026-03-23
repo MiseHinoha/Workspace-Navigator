@@ -1,0 +1,232 @@
+import { useEffect, useState, useMemo } from 'react';
+import { X, Search, ExternalLink, GripVertical, Bookmark } from 'lucide-react';
+import { useWorkspaceStore } from '../stores/workspaceStore';
+import { Bookmark as BookmarkType } from '../types';
+
+interface BookmarkDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
+  const { bookmarks, tags, fetchBookmarks, fetchTags } = useWorkspaceStore();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchBookmarks();
+      fetchTags();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
+  const filteredBookmarks = useMemo(() => {
+    return bookmarks.filter((bookmark) => {
+      const matchesTag = !selectedTag || bookmark.tags.includes(selectedTag);
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = !searchQuery || 
+        bookmark.title.toLowerCase().includes(query) ||
+        bookmark.url.toLowerCase().includes(query) ||
+        bookmark.tags.some(tag => tag.toLowerCase().includes(query));
+      return matchesTag && matchesSearch;
+    });
+  }, [bookmarks, selectedTag, searchQuery]);
+
+  const groupedBookmarks = useMemo(() => {
+    const groups: Record<string, BookmarkType[]> = {};
+    filteredBookmarks.forEach(bookmark => {
+      const firstChar = bookmark.title.charAt(0).toUpperCase();
+      const key = /^[A-Z]/.test(firstChar) ? firstChar : '#';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(bookmark);
+    });
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [filteredBookmarks]);
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      {/* Backdrop - allows pointer events to pass through for drag */}
+      <div 
+        className="fixed inset-0 bg-black/20 z-40"
+        style={{ pointerEvents: 'none' }}
+        onClick={onClose}
+      />
+      
+      {/* Drawer - clickable */}
+      <div 
+        className="fixed right-0 top-0 h-full w-80 bg-white shadow-2xl z-50 flex flex-col"
+        style={{ animation: 'slideInRight 0.2s ease-out' }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-2">
+            <Bookmark size={20} className="text-blue-600" />
+            <h2 className="font-semibold text-gray-900">书签库</h2>
+            <span className="text-xs text-gray-400">({bookmarks.length})</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="px-4 py-3 border-b border-gray-200">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜索书签标题或标签..."
+              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              autoFocus
+            />
+          </div>
+        </div>
+
+        {/* Tags Filter */}
+        {tags.length > 0 && (
+          <div className="px-4 py-2 border-b border-gray-200 max-h-24 overflow-y-auto">
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setSelectedTag(null)}
+                className={`px-2 py-0.5 text-xs font-medium rounded-full transition-colors ${
+                  selectedTag === null
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                全部
+              </button>
+              {tags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
+                  className={`px-2 py-0.5 text-xs font-medium rounded-full transition-colors ${
+                    selectedTag === tag
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Bookmark List */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-4">
+          {filteredBookmarks.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <Bookmark size={40} className="mx-auto mb-2 opacity-50" />
+              <p className="text-sm">没有找到书签</p>
+            </div>
+          ) : (
+            searchQuery ? (
+              <div className="space-y-2">
+                {filteredBookmarks.map((bookmark) => (
+                  <DraggableBookmarkItem key={bookmark.id} bookmark={bookmark} />
+                ))}
+              </div>
+            ) : (
+              groupedBookmarks.map(([letter, items]) => (
+                <div key={letter}>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase px-2 mb-2">{letter}</h3>
+                  <div className="space-y-2">
+                    {items.map((bookmark) => (
+                      <DraggableBookmarkItem key={bookmark.id} bookmark={bookmark} />
+                    ))}
+                  </div>
+                </div>
+              ))
+            )
+          )}
+        </div>
+
+        {/* Footer Hint */}
+        <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 text-center">
+          💡 拖拽书签到左侧工作区域进行固定
+        </div>
+      </div>
+    </>
+  );
+}
+
+function DraggableBookmarkItem({ bookmark }: { bookmark: BookmarkType }) {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    console.log('Native drag start:', bookmark);
+    
+    // Set data for the drag operation
+    const data = JSON.stringify(bookmark);
+    e.dataTransfer.setData('application/json', data);
+    e.dataTransfer.setData('text/plain', data); // Fallback
+    e.dataTransfer.effectAllowed = 'copy';
+    
+    // Set a drag image if desired (optional)
+    // e.dataTransfer.setDragImage(element, 0, 0);
+  };
+
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+    console.log('Native drag end');
+  };
+
+  return (
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      className="group flex items-center gap-2 p-2.5 bg-white rounded-lg border border-gray-200 hover:border-blue-400 hover:shadow-md transition-all cursor-grab active:cursor-grabbing"
+    >
+      <GripVertical size={16} className="text-gray-300 flex-shrink-0" />
+      
+      <div className="w-8 h-8 flex items-center justify-center bg-gray-50 rounded flex-shrink-0 overflow-hidden">
+        {bookmark.icon ? (
+          <img src={bookmark.icon} alt="" className="w-5 h-5 object-contain" />
+        ) : (
+          <span className="text-sm">🔗</span>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 truncate">{bookmark.title}</p>
+        <p className="text-xs text-gray-500 truncate">{bookmark.url}</p>
+        {bookmark.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {bookmark.tags.slice(0, 2).map(tag => (
+              <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">{tag}</span>
+            ))}
+            {bookmark.tags.length > 2 && (
+              <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">+{bookmark.tags.length - 2}</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <a
+        href={bookmark.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="p-1.5 text-gray-300 hover:text-blue-600 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <ExternalLink size={14} />
+      </a>
+    </div>
+  );
+}
