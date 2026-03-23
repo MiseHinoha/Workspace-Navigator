@@ -31,6 +31,7 @@ interface WorkspaceState {
   pinBookmark: (workspaceId: string, bookmarkId: string, groupId?: string) => Promise<void>;
   moveCardToGroup: (workspaceId: string, cardId: string, groupId?: string) => Promise<void>;
   unpinCard: (workspaceId: string, cardId: string) => Promise<void>;
+  reorderCards: (workspaceId: string, groupId: string | null, cards: PinnedCard[]) => void;
   setActiveWorkspace: (id: string | null) => void;
   setActiveGroup: (id: string | null) => void;
 }
@@ -337,6 +338,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       await get().fetchPinnedCards(workspaceId, activeGroupId);
       throw error;
     }
+  },
+
+  reorderCards: (workspaceId, groupId, newCards) => {
+    const key = `${workspaceId}-${groupId || 'null'}`;
+    set((state) => ({
+      pinnedCards: {
+        ...state.pinnedCards,
+        [key]: newCards,
+      },
+    }));
   },
 
   setActiveWorkspace: (id) => {

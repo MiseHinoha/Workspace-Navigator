@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { ExternalLink, X, Plus, Folder, FolderOpen } from 'lucide-react';
+import { ExternalLink, X, Plus, Folder, FolderOpen, GripVertical } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark, PinnedCard, Group } from '../types';
 
@@ -14,6 +14,7 @@ export function WorkspaceCanvas() {
     fetchGroups,
     unpinCard,
     pinBookmark,
+    reorderCards,
     setActiveGroup,
     createGroup,
     deleteGroup,
@@ -25,6 +26,8 @@ export function WorkspaceCanvas() {
   const [cards, setCards] = useState<PinnedCard[]>([]);
   const [workspaceGroups, setWorkspaceGroups] = useState<Group[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
+  const [dragOverCardId, setDragOverCardId] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
@@ -51,38 +54,39 @@ export function WorkspaceCanvas() {
     }
   }, [activeWorkspaceId, activeGroupId, pinnedCards]);
 
+  // Check if URL already exists in current workspace/group
+  const isUrlExists = (url: string): boolean => {
+    const key = `${activeWorkspaceId}-${activeGroupId || 'null'}`;
+    const currentCards = pinnedCards[key] || [];
+    return currentCards.some(card => card.url === url);
+  };
+
   // Native drag and drop handlers
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    // MUST preventDefault to allow dropping
     e.preventDefault();
     e.stopPropagation();
     
-    // Set drop effect
     if (e.dataTransfer) {
       e.dataTransfer.dropEffect = 'copy';
     }
     
     setIsDraggingOver(true);
-    console.log('Drag over workspace');
   };
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDraggingOver(true);
-    console.log('Drag enter workspace');
   };
 
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    // Only set to false if we're actually leaving the element
     const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;
     
     if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
       setIsDraggingOver(false);
-      console.log('Drag leave workspace');
     }
   };
 
@@ -91,26 +95,18 @@ export function WorkspaceCanvas() {
     e.stopPropagation();
     setIsDraggingOver(false);
     
-    console.log('Drop event received on workspace');
-    console.log('DataTransfer types:', e.dataTransfer.types);
-    
-    // Try to get data
     let data = e.dataTransfer.getData('application/json');
     
-    // If no JSON data, try text/plain as fallback
     if (!data) {
       data = e.dataTransfer.getData('text/plain');
-      console.log('Fallback to text/plain:', data);
     }
     
     if (!data) {
-      console.log('No data found in drop event');
       return;
     }
     
     try {
       const bookmark: Bookmark = JSON.parse(data);
-      console.log('Parsed bookmark:', bookmark);
       
       let targetWorkspaceId = activeWorkspaceId;
       
@@ -120,12 +116,69 @@ export function WorkspaceCanvas() {
       }
       
       if (targetWorkspaceId && bookmark?.id) {
-        console.log('Pinning bookmark:', bookmark.id, 'to workspace:', targetWorkspaceId);
+        // Check if URL already exists
+        if (isUrlExists(bookmark.url)) {
+          alert('该网站已存在于当前工作空间中！');
+          return;
+        }
         pinBookmark(targetWorkspaceId, bookmark.id, activeGroupId);
       }
     } catch (err) {
       console.error('Failed to parse dropped data:', err);
     }
+  };
+
+  // Card reordering handlers
+  const handleCardDragStart = (e: React.DragEvent<HTMLDivElement>, cardId: string) => {
+    setDraggedCardId(cardId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('card/id', cardId);
+  };
+
+  const handleCardDragOver = (e: React.DragEvent<HTMLDivElement>, cardId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedCardId && draggedCardId !== cardId) {
+      setDragOverCardId(cardId);
+    }
+  };
+
+  const handleCardDrop = (e: React.DragEvent<HTMLDivElement>, targetCardId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const sourceCardId = e.dataTransfer.getData('card/id') || draggedCardId;
+    
+    if (sourceCardId && sourceCardId !== targetCardId && activeWorkspaceId) {
+      // Reorder cards
+      const newCards = [...cards];
+      const sourceIndex = newCards.findIndex(c => c.id === sourceCardId);
+      const targetIndex = newCards.findIndex(c => c.id === targetCardId);
+      
+      if (sourceIndex !== -1 && targetIndex !== -1) {
+        const [movedCard] = newCards.splice(sourceIndex, 1);
+        newCards.splice(targetIndex, 0, movedCard);
+        
+        // Update sort_order
+        newCards.forEach((card, index) => {
+          card.sort_order = index + 1;
+        });
+        
+        // Update local state immediately
+        setCards(newCards);
+        
+        // Update store
+        reorderCards(activeWorkspaceId, activeGroupId, newCards);
+      }
+    }
+    
+    setDraggedCardId(null);
+    setDragOverCardId(null);
+  };
+
+  const handleCardDragEnd = () => {
+    setDraggedCardId(null);
+    setDragOverCardId(null);
   };
 
   const handleCreateGroup = async (e: React.FormEvent) => {
@@ -282,11 +335,18 @@ export function WorkspaceCanvas() {
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {cards.map((card) => (
+            {cards.map((card, index) => (
               <PinnedCardItem 
                 key={card.id} 
                 card={card} 
+                index={index}
+                isDragging={draggedCardId === card.id}
+                isDragOver={dragOverCardId === card.id}
                 onRemove={() => unpinCard(activeWorkspaceId!, card.id)}
+                onDragStart={(e) => handleCardDragStart(e, card.id)}
+                onDragOver={(e) => handleCardDragOver(e, card.id)}
+                onDrop={(e) => handleCardDrop(e, card.id)}
+                onDragEnd={handleCardDragEnd}
               />
             ))}
           </div>
@@ -298,10 +358,27 @@ export function WorkspaceCanvas() {
 
 interface PinnedCardItemProps {
   card: PinnedCard;
+  index: number;
+  isDragging: boolean;
+  isDragOver: boolean;
   onRemove: () => void;
+  onDragStart: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDrop: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragEnd: () => void;
 }
 
-function PinnedCardItem({ card, onRemove }: PinnedCardItemProps) {
+function PinnedCardItem({ 
+  card, 
+  index,
+  isDragging,
+  isDragOver,
+  onRemove,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd
+}: PinnedCardItemProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   const getFavicon = (url: string) => {
@@ -319,13 +396,30 @@ function PinnedCardItem({ card, onRemove }: PinnedCardItemProps) {
 
   return (
     <div
-      className="group relative bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all overflow-hidden cursor-pointer"
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={`group relative bg-white rounded-xl shadow-sm border transition-all overflow-hidden cursor-pointer ${
+        isDragging ? 'opacity-50 rotate-2' : ''
+      } ${
+        isDragOver ? 'border-blue-500 ring-2 ring-blue-200 scale-105' : 'border-gray-200 hover:shadow-md hover:border-blue-300'
+      }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleOpenLink}
     >
+      {/* Drag Handle */}
+      <div 
+        className="absolute top-2 right-2 p-1.5 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing z-20"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical size={16} />
+      </div>
+
       {/* Card Header */}
-      <div className="flex items-start justify-between p-4">
+      <div className="flex items-start justify-between p-4 pr-10">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
             {card.icon ? (
@@ -346,33 +440,6 @@ function PinnedCardItem({ card, onRemove }: PinnedCardItemProps) {
             <p className="text-xs text-gray-500 truncate">{new URL(card.url).hostname}</p>
           </div>
         </div>
-        
-        {/* Actions */}
-        <div 
-          className={`flex items-center gap-1 transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}
-          onClick={(e) => e.stopPropagation()} // Prevent card click when clicking buttons
-        >
-          <a
-            href={card.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-1.5 text-gray-400 hover:text-blue-600 rounded"
-            title="打开链接"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ExternalLink size={16} />
-          </a>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove();
-            }}
-            className="p-1.5 text-gray-400 hover:text-red-600 rounded"
-            title="移除卡片"
-          >
-            <X size={16} />
-          </button>
-        </div>
       </div>
 
       {/* Description */}
@@ -384,7 +451,7 @@ function PinnedCardItem({ card, onRemove }: PinnedCardItemProps) {
 
       {/* Tags */}
       {card.tags && card.tags.length > 0 && (
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-3">
           <div className="flex flex-wrap gap-1">
             {card.tags.slice(0, 3).map((tag) => (
               <span
@@ -402,6 +469,33 @@ function PinnedCardItem({ card, onRemove }: PinnedCardItemProps) {
           </div>
         </div>
       )}
+
+      {/* Actions Footer */}
+      <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+        <span className="text-xs text-gray-400">#{card.sort_order || 0}</span>
+        <div className={`flex items-center gap-1 transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+          <a
+            href={card.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1.5 text-gray-400 hover:text-blue-600 rounded"
+            title="打开链接"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink size={14} />
+          </a>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            className="p-1.5 text-gray-400 hover:text-red-600 rounded"
+            title="移除卡片"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
