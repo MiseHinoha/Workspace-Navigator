@@ -162,10 +162,12 @@ export function Login() {
             </div>
           )}
 
-          {/* Demo hint */}
-          <div className="mt-6 p-3 bg-gray-50 rounded-lg text-center">
-            <p className="text-xs text-gray-500">默认管理员账号：admin / admin123</p>
-          </div>
+          {/* Demo hint - only show in development */}
+          {import.meta.env.DEV && (
+            <div className="mt-6 p-3 bg-gray-50 rounded-lg text-center">
+              <p className="text-xs text-gray-500">默认管理员账号：admin / admin123</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

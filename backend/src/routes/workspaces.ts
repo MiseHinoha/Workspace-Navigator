@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../models/database';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
+import { Workspace } from '../types';
 
 const router = Router();
 
@@ -55,7 +56,7 @@ router.put('/:id', authMiddleware, (req: AuthenticatedRequest, res) => {
 
     // Check ownership
     const checkStmt = db.prepare('SELECT * FROM workspaces WHERE id = ? AND user_id = ?');
-    const existing = checkStmt.get(id, userId);
+    const existing = checkStmt.get(id, userId) as Workspace | undefined;
     
     if (!existing) {
       return res.status(404).json({ error: 'Workspace not found' });

@@ -15,7 +15,7 @@ export function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [_sessions, setSessions] = useState<any[]>([]);
 
   useEffect(() => {
     const init = async () => {

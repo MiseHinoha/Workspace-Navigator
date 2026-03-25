@@ -10,7 +10,7 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const db = new Database(DB_PATH);
+const db: Database.Database = new Database(DB_PATH);
 
 // Enable WAL mode for better concurrency
 db.pragma('journal_mode = WAL');
@@ -119,8 +119,8 @@ export function initDatabase() {
     )
   `);
 
-  // Insert default admin user if not exists (admin/admin123)
-  const defaultPassword = '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'; // admin123
+  // Insert default admin user if not exists
+  const defaultPassword = '$2a$10$qgzmuGjJSYZbCGn3DkTRJOCz4EH4cw5CyafluJDsgzXnvdoRuMlDq'; // @^dhIPdZtcVR@jrd
   const insertDefaultUser = db.prepare(`
     INSERT OR IGNORE INTO users (id, username, password, is_admin)
     VALUES ('admin', 'admin', ?, 1)

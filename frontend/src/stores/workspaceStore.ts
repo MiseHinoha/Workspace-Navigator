@@ -286,7 +286,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       workspace_id: workspaceId,
       bookmark_id: bookmarkId,
       user_id: 'current-user',
-      group_id: groupId || null,
+      group_id: groupId || undefined,
       sort_order: cards.length + 1,
       title: bookmark.title,
       url: bookmark.url,
@@ -320,7 +320,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   unpinCard: async (workspaceId, cardId) => {
-    const { pinnedCards, activeGroupId } = get();
+    const { activeGroupId } = get();
     const key = `${workspaceId}-${activeGroupId || 'null'}`;
     
     // Optimistic update

@@ -27,6 +27,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/ws": "^8.5.10",
     "@types/uuid": "^9.0.8",
+    "@types/better-sqlite3": "^7.6.9",
     "@types/node": "^20.11.30",
     "typescript": "^5.4.3",
     "tsx": "^4.7.1"
