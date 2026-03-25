@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../models/database';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
+import { SessionRow } from '../types';
 
 const router = Router();
 
@@ -55,7 +56,7 @@ router.post('/', authMiddleware, (req: AuthenticatedRequest, res) => {
       );
     }
 
-    const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId);
+    const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId) as SessionRow;
     res.json({
       ...session,
       tabs: JSON.parse(session.tabs || '[]')
@@ -73,7 +74,7 @@ router.get('/:id', authMiddleware, (req: AuthenticatedRequest, res) => {
     const userId = req.user!.userId;
 
     const stmt = db.prepare('SELECT * FROM sessions WHERE id = ? AND user_id = ?');
-    const session = stmt.get(id, userId);
+    const session = stmt.get(id, userId) as SessionRow | undefined;
 
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });

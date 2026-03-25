@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../models/database';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
+import { BookmarkRow } from '../types';
 
 const router = Router();
 
@@ -99,7 +100,7 @@ router.post('/', authMiddleware, (req: AuthenticatedRequest, res) => {
     );
     stmt.run(id, userId, title, url, description || null, icon || null, tagsJson, is_frequent ? 1 : 0, frequentOrder);
 
-    const newBookmark = db.prepare('SELECT * FROM bookmarks WHERE id = ?').get(id);
+    const newBookmark = db.prepare('SELECT * FROM bookmarks WHERE id = ?').get(id) as BookmarkRow;
     res.status(201).json({
       ...newBookmark,
       tags: tags || []
@@ -143,7 +144,7 @@ router.put('/:id', authMiddleware, (req: AuthenticatedRequest, res) => {
       id
     );
 
-    const updated = db.prepare('SELECT * FROM bookmarks WHERE id = ?').get(id);
+    const updated = db.prepare('SELECT * FROM bookmarks WHERE id = ?').get(id) as BookmarkRow;
     res.json({
       ...updated,
       tags: JSON.parse(updated.tags || '[]')

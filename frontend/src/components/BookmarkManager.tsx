@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Edit2, Trash2, Tag, X, Link2, ExternalLink } from 'lucide-react';
+import { Plus, Tag, X, Link2 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark } from '../types';
 import { DraggableBookmark } from './DraggableBookmark';

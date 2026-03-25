@@ -15,7 +15,7 @@ interface BookmarkFormData {
 
 export function BookmarksPage() {
   const navigate = useNavigate();
-  const { bookmarks, tags, fetchBookmarks, fetchTags, fetchFrequentBookmarks, createBookmark, updateBookmark, deleteBookmark, toggleFrequent } = useWorkspaceStore();
+  const { bookmarks, tags, fetchBookmarks, fetchTags, createBookmark, updateBookmark, deleteBookmark, toggleFrequent } = useWorkspaceStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);

@@ -227,7 +227,7 @@ function DraggableBookmarkItem({ bookmark }: { bookmark: BookmarkType }) {
     // e.dataTransfer.setDragImage(element, 0, 0);
   };
 
-  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragEnd = (_e: React.DragEvent<HTMLDivElement>) => {
     console.log('Native drag end');
   };
 

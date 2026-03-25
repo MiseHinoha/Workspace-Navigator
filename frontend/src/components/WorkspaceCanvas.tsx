@@ -121,7 +121,7 @@ export function WorkspaceCanvas() {
           alert('该网站已存在于当前工作空间中！');
           return;
         }
-        pinBookmark(targetWorkspaceId, bookmark.id, activeGroupId);
+        pinBookmark(targetWorkspaceId, bookmark.id, activeGroupId || undefined);
       }
     } catch (err) {
       console.error('Failed to parse dropped data:', err);
@@ -370,7 +370,7 @@ interface PinnedCardItemProps {
 
 function PinnedCardItem({ 
   card, 
-  index,
+  index: _index,
   isDragging,
   isDragOver,
   onRemove,
