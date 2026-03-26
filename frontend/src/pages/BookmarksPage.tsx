@@ -31,11 +31,14 @@ export function BookmarksPage() {
 
   const filteredBookmarks = useMemo(() => {
     return bookmarks.filter((bookmark) => {
-      const matchesTag = !selectedTag || bookmark.tags.includes(selectedTag);
+      const matchesTag = !selectedTag || (bookmark.tags && bookmark.tags.includes(selectedTag));
+      const title = bookmark.title || '';
+      const url = bookmark.url || '';
+      const description = bookmark.description || '';
       const matchesSearch = !searchQuery || 
-        bookmark.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bookmark.url.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bookmark.description?.toLowerCase().includes(searchQuery.toLowerCase());
+        title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        url.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        description.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesTag && matchesSearch;
     });
   }, [bookmarks, selectedTag, searchQuery]);
@@ -85,11 +88,11 @@ export function BookmarksPage() {
   const startEdit = (bookmark: Bookmark) => {
     setEditingBookmark(bookmark);
     setFormData({
-      title: bookmark.title,
+      title: bookmark.title || '',
       url: bookmark.url,
       description: bookmark.description || '',
       icon: bookmark.icon || '',
-      tags: bookmark.tags.join(', '),
+      tags: Array.isArray(bookmark.tags) ? bookmark.tags.join(', ') : '',
       is_frequent: bookmark.is_frequent,
     });
   };
@@ -149,7 +152,7 @@ export function BookmarksPage() {
                   ) : (
                     <span className="text-lg flex-shrink-0">🔗</span>
                   )}
-                  <span className="text-sm font-medium text-gray-700 truncate flex-1">{bookmark.title}</span>
+                  <span className="text-sm font-medium text-gray-700 truncate flex-1">{bookmark.title || bookmark.url || '未命名'}</span>
                   <ExternalLink size={14} className="text-gray-300 group-hover:text-gray-500 flex-shrink-0" />
                 </a>
               ))}
@@ -218,7 +221,7 @@ export function BookmarksPage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 truncate">{bookmark.title}</h3>
+                      <h3 className="font-semibold text-gray-900 truncate">{bookmark.title || bookmark.url || '未命名'}</h3>
                       <p className="text-xs text-gray-500 truncate">{new URL(bookmark.url).hostname}</p>
                     </div>
                   </div>

@@ -22,11 +22,14 @@ export function BookmarkManager() {
 
   const filteredBookmarks = useMemo(() => {
     return bookmarks.filter((bookmark) => {
-      const matchesTag = !selectedTag || bookmark.tags.includes(selectedTag);
+      const matchesTag = !selectedTag || (bookmark.tags && bookmark.tags.includes(selectedTag));
+      const title = bookmark.title || '';
+      const url = bookmark.url || '';
+      const description = bookmark.description || '';
       const matchesSearch = !searchQuery || 
-        bookmark.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bookmark.url.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bookmark.description?.toLowerCase().includes(searchQuery.toLowerCase());
+        title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        url.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        description.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesTag && matchesSearch;
     });
   }, [bookmarks, selectedTag, searchQuery]);
@@ -70,11 +73,11 @@ export function BookmarkManager() {
   const startEdit = (bookmark: Bookmark) => {
     setEditingBookmark(bookmark);
     setFormData({
-      title: bookmark.title,
-      url: bookmark.url,
+      title: bookmark.title || '',
+      url: bookmark.url || '',
       description: bookmark.description || '',
       icon: bookmark.icon || '',
-      tags: bookmark.tags.join(', '),
+      tags: Array.isArray(bookmark.tags) ? bookmark.tags.join(', ') : '',
     });
   };
 

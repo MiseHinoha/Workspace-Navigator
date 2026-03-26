@@ -37,7 +37,7 @@ export function DraggableBookmark({ bookmark, onEdit, onDelete }: DraggableBookm
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="font-medium text-gray-900 truncate">{bookmark.title}</p>
+          <p className="font-medium text-gray-900 truncate">{bookmark.title || bookmark.url || '未命名'}</p>
           <a
             href={bookmark.url}
             target="_blank"
@@ -49,7 +49,7 @@ export function DraggableBookmark({ bookmark, onEdit, onDelete }: DraggableBookm
           </a>
         </div>
         <p className="text-xs text-gray-500 truncate">{bookmark.url}</p>
-        {bookmark.tags.length > 0 && (
+        {Array.isArray(bookmark.tags) && bookmark.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
             {bookmark.tags.map((tag) => (
               <span
