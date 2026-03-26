@@ -169,27 +169,59 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     // Auto-fetch metadata if title or icon is empty
     if (!title || !icon) {
       try {
-        // Try to fetch website HTML
-        const response = await axios.get(url, {
-          timeout: 8000,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-          },
-          maxRedirects: 5,
-          validateStatus: (status) => status < 400
-        });
-
-        const $ = cheerio.load(response.data);
+        // Try to fetch website HTML with multiple fallback strategies
+        let html = '';
         
-        // Extract title
-        if (!title) {
-          title = $('title').first().text().trim() || 
-                  $('meta[property="og:title"]').attr('content') || 
-                  $('meta[name="twitter:title"]').attr('content') ||
-                  '';
+        // Strategy 1: Normal axios request
+        try {
+          const response = await axios.get(url, {
+            timeout: 10000,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+              'Cache-Control': 'no-cache',
+            },
+            maxRedirects: 10,
+            validateStatus: () => true, // Accept any status to handle manually
+            responseType: 'text',
+            transformResponse: [(data) => data], // Don't parse JSON
+          });
+          
+          if (response.status >= 200 && response.status < 400) {
+            html = response.data;
+          } else {
+            console.log('Non-OK status for:', url, response.status);
+          }
+        } catch (axiosError) {
+          console.log('Axios fetch failed for:', url, (axiosError as Error).message);
         }
+        
+        // If we have HTML, parse it
+        if (html) {
+          const $ = cheerio.load(html, { 
+            decodeEntities: true,
+            lowerCaseAttributeNames: true 
+          });
+          
+          // Extract title - try multiple selectors in order of preference
+          if (!title) {
+            const titleText = $('title').first().text().trim();
+            const ogTitle = $('meta[property="og:title"]').attr('content')?.trim();
+            const twitterTitle = $('meta[name="twitter:title"]').attr('content')?.trim();
+            
+            title = titleText || ogTitle || twitterTitle || '';
+            
+            // Clean up title (remove site name if duplicated)
+            if (title) {
+              const urlObj = new URL(url);
+              const hostname = urlObj.hostname.replace(/^www\./, '');
+              // Remove common suffixes like " - Site Name" or " | Site Name"
+              title = title.replace(new RegExp(`\s*[-|]\s*${hostname.replace(/\./g, '\\.')}$`, 'i'), '').trim();
+            }
+            
+            console.log('Title extracted for:', url, 'Result:', title || '(empty)');
+          }
         
         // Extract icon
         if (!icon) {
