@@ -302,12 +302,16 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
       frequentOrder = (result.max_order || 0) + 1;
     }
 
+    // Debug log
+    console.log('Creating bookmark with title:', title, 'icon:', icon, 'url:', url);
+
     const stmt = db.prepare(
       'INSERT INTO bookmarks (id, user_id, title, url, description, icon, tags, is_frequent, frequent_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    stmt.run(id, userId, title, url, description || null, icon || null, tagsJson, is_frequent ? 1 : 0, frequentOrder);
+    stmt.run(id, userId, title || url, url, description || null, icon || null, tagsJson, is_frequent ? 1 : 0, frequentOrder);
 
     const newBookmark = db.prepare('SELECT * FROM bookmarks WHERE id = ?').get(id) as BookmarkRow;
+    console.log('Saved bookmark title from DB:', newBookmark.title);
     
     // Parse tags safely
     let parsedTags: string[] = [];
