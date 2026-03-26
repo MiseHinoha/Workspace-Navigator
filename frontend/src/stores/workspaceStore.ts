@@ -39,7 +39,11 @@ interface WorkspaceState {
 // Helper to extract unique tags from bookmarks
 const extractTags = (bookmarks: Bookmark[]): string[] => {
   const tagSet = new Set<string>();
-  bookmarks.forEach(b => b.tags.forEach(t => tagSet.add(t)));
+  bookmarks.forEach(b => {
+    // 确保 tags 是数组
+    const tags = Array.isArray(b.tags) ? b.tags : [];
+    tags.forEach(t => tagSet.add(t));
+  });
   return Array.from(tagSet).sort();
 };
 
