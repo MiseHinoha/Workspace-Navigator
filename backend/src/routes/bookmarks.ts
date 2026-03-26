@@ -199,28 +199,28 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
         
         // If we have HTML, parse it
         if (html) {
-          const $ = cheerio.load(html, { 
-            decodeEntities: true,
-            lowerCaseAttributeNames: true 
-          });
+          const $ = cheerio.load(html, { decodeEntities: true });
           
-          // Extract title - try multiple selectors in order of preference
+          // Extract title - try multiple selectors
           if (!title) {
             const titleText = $('title').first().text().trim();
-            const ogTitle = $('meta[property="og:title"]').attr('content')?.trim();
-            const twitterTitle = $('meta[name="twitter:title"]').attr('content')?.trim();
+            const ogTitle = $('meta[property="og:title"]').attr('content');
+            const twitterTitle = $('meta[name="twitter:title"]').attr('content');
             
             title = titleText || ogTitle || twitterTitle || '';
             
-            // Clean up title (remove site name if duplicated)
+            // Clean up title (remove site name suffix)
             if (title) {
-              const urlObj = new URL(url);
-              const hostname = urlObj.hostname.replace(/^www\./, '');
-              // Remove common suffixes like " - Site Name" or " | Site Name"
-              title = title.replace(new RegExp(`\s*[-|]\s*${hostname.replace(/\./g, '\\.')}$`, 'i'), '').trim();
+              try {
+                const urlObj = new URL(url);
+                const hostname = urlObj.hostname.replace(/^www\./, '');
+                title = title.replace(new RegExp(`\\s*[-|]\\s*${hostname.replace(/\./g, '\\.')}\\s*$`, 'i'), '').trim();
+              } catch {
+                // Keep original title
+              }
             }
             
-            console.log('Title extracted for:', url, 'Result:', title || '(empty)');
+            console.log('Title for', url, ':', title || '(empty)');
           }
         
         // Extract icon
