@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { X, Plus, Folder, FolderOpen } from 'lucide-react';
+import { X, Plus, Folder, FolderOpen, Edit2, Trash2, ExternalLink } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark, PinnedCard, Group } from '../types';
 
@@ -422,74 +422,116 @@ function PinnedCardItem({
         <X size={16} />
       </button>
 
-      {/* Card Header */}
-      <div className="flex items-start p-4 pr-14">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
-            {card.icon ? (
-              <img 
-                src={card.icon} 
-                alt="" 
-                className="w-8 h-8 object-contain"
-                onError={(e) => {
-                  // Fallback to Google favicon on error
-                  const target = e.target as HTMLImageElement;
-                  target.src = getFavicon(card.url);
-                }}
-              />
-            ) : (
-              <img 
-                src={getFavicon(card.url)} 
-                alt="" 
-                className="w-8 h-8 object-contain"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            )}
+      {/* Card Content - Flex column with fixed footer */}
+      <div className="flex flex-col h-full">
+        {/* Card Header */}
+        <div className="flex items-start p-4 pr-14">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {card.icon ? (
+                <img 
+                  src={card.icon} 
+                  alt="" 
+                  className="w-8 h-8 object-contain"
+                  onError={(e) => {
+                    // Fallback to Google favicon on error
+                    const target = e.target as HTMLImageElement;
+                    target.src = getFavicon(card.url);
+                  }}
+                />
+              ) : (
+                <img 
+                  src={getFavicon(card.url)} 
+                  alt="" 
+                  className="w-8 h-8 object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              )}
+            </div>
+            <div className="flex-1 min-w-0 overflow-hidden">
+              {/* Scrollable title */}
+              <div className="overflow-x-auto scrollbar-hide">
+                <h3 className="font-semibold text-gray-900 whitespace-nowrap">{card.title || card.url || '未命名'}</h3>
+              </div>
+              <p className="text-xs text-gray-500 truncate">{
+                (() => {
+                  try {
+                    return new URL(card.url).hostname;
+                  } catch {
+                    return card.url || '无效链接';
+                  }
+                })()
+              }</p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 truncate">{card.title || card.url || '未命名'}</h3>
-            <p className="text-xs text-gray-500 truncate">{
-              (() => {
-                try {
-                  return new URL(card.url).hostname;
-                } catch {
-                  return card.url || '无效链接';
-                }
-              })()
-            }</p>
+        </div>
+
+        {/* Middle Content - Scrollable if too long */}
+        <div className="flex-1 px-4 pb-3 overflow-hidden">
+          {/* Description */}
+          {card.description && (
+            <p className="text-sm text-gray-600 line-clamp-2 mb-2">{card.description}</p>
+          )}
+
+          {/* Tags */}
+          {card.tags && card.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {card.tags.slice(0, 3).map((tag) => (
+                <span
+                  key={tag}
+                  className="px-2 py-0.5 text-xs bg-blue-50 text-blue-600 rounded-full"
+                >
+                  {tag}
+                </span>
+              ))}
+              {card.tags.length > 3 && (
+                <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-500 rounded-full">
+                  +{card.tags.length - 3}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(card.url, '_blank', 'noopener,noreferrer');
+              }}
+              className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+            >
+              <ExternalLink size={14} />
+              打开链接
+            </button>
+            
+            <div className="flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Edit functionality would go here
+                }}
+                className="p-1.5 text-gray-400 hover:text-blue-600 rounded"
+              >
+                <Edit2 size={16} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove();
+                }}
+                className="p-1.5 text-gray-400 hover:text-red-600 rounded"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Description */}
-      {card.description && (
-        <div className="px-4 pb-3">
-          <p className="text-sm text-gray-600 line-clamp-2">{card.description}</p>
-        </div>
-      )}
-
-      {/* Tags */}
-      {card.tags && card.tags.length > 0 && (
-        <div className="px-4 pb-4">
-          <div className="flex flex-wrap gap-1">
-            {card.tags.slice(0, 3).map((tag) => (
-              <span
-                key={tag}
-                className="px-2 py-0.5 text-xs bg-blue-50 text-blue-600 rounded-full"
-              >
-                {tag}
-              </span>
-            ))}
-            {card.tags.length > 3 && (
-              <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-500 rounded-full">
-                +{card.tags.length - 3}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
