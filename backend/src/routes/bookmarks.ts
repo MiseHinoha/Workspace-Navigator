@@ -157,6 +157,9 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
     let { title, url, description, icon, tags, is_frequent } = req.body;
     
+    console.log('=== CREATE BOOKMARK REQUEST ===');
+    console.log('Received:', { title, url, description, icon, tags });
+    
     if (!url) {
       return res.status(400).json({ error: 'URL is required' });
     }
@@ -165,6 +168,10 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://' + url;
     }
+    
+    console.log('Normalized URL:', url);
+    console.log('Title before fetch:', title);
+    console.log('Icon before fetch:', icon);
 
     // Auto-fetch metadata if title or icon is empty
     if (!title || !icon) {
@@ -289,7 +296,10 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     }
 
     // Debug log
-    console.log('Creating bookmark with title:', title, 'icon:', icon, 'url:', url);
+    console.log('=== BEFORE DB INSERT ===');
+    console.log('Final title:', title);
+    console.log('Final icon:', icon);
+    console.log('Final description:', description);
 
     const stmt = db.prepare(
       'INSERT INTO bookmarks (id, user_id, title, url, description, icon, tags, is_frequent, frequent_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -297,7 +307,11 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     stmt.run(id, userId, title || url, url, description || null, icon || null, tagsJson, is_frequent ? 1 : 0, frequentOrder);
 
     const newBookmark = db.prepare('SELECT * FROM bookmarks WHERE id = ?').get(id) as BookmarkRow;
-    console.log('Saved bookmark title from DB:', newBookmark.title);
+    
+    console.log('=== FROM DATABASE ===');
+    console.log('DB title:', newBookmark.title);
+    console.log('DB icon:', newBookmark.icon);
+    console.log('DB url:', newBookmark.url);
     
     // Parse tags safely
     let parsedTags: string[] = [];
@@ -310,7 +324,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
       parsedTags = [];
     }
     
-    res.status(201).json({
+    const responseData = {
       id: newBookmark.id,
       user_id: newBookmark.user_id,
       title: newBookmark.title,
@@ -322,7 +336,13 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
       frequent_order: newBookmark.frequent_order || 0,
       created_at: newBookmark.created_at,
       updated_at: newBookmark.updated_at
-    });
+    };
+    
+    console.log('=== RESPONSE ===');
+    console.log('Response title:', responseData.title);
+    console.log('==================');
+    
+    res.status(201).json(responseData);
   } catch (error) {
     console.error('Create bookmark error:', error);
     res.status(500).json({ error: 'Failed to create bookmark' });
