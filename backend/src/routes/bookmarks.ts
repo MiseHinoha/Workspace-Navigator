@@ -242,11 +242,30 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     stmt.run(id, userId, title, url, description || null, icon || null, tagsJson, is_frequent ? 1 : 0, frequentOrder);
 
     const newBookmark = db.prepare('SELECT * FROM bookmarks WHERE id = ?').get(id) as BookmarkRow;
+    
+    // Parse tags safely
+    let parsedTags: string[] = [];
+    try {
+      parsedTags = JSON.parse(newBookmark.tags || '[]');
+      if (!Array.isArray(parsedTags)) {
+        parsedTags = [];
+      }
+    } catch (e) {
+      parsedTags = [];
+    }
+    
     res.status(201).json({
-      ...newBookmark,
-      tags: JSON.parse(newBookmark.tags || '[]'),
+      id: newBookmark.id,
+      user_id: newBookmark.user_id,
+      title: newBookmark.title,
+      url: newBookmark.url,
+      description: newBookmark.description,
+      icon: newBookmark.icon,
+      tags: parsedTags,
       is_frequent: !!newBookmark.is_frequent,
-      frequent_order: newBookmark.frequent_order
+      frequent_order: newBookmark.frequent_order || 0,
+      created_at: newBookmark.created_at,
+      updated_at: newBookmark.updated_at
     });
   } catch (error) {
     console.error('Create bookmark error:', error);

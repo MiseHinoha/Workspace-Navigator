@@ -41,8 +41,13 @@ const extractTags = (bookmarks: Bookmark[]): string[] => {
   const tagSet = new Set<string>();
   bookmarks.forEach(b => {
     // 确保 tags 是数组
-    const tags = Array.isArray(b.tags) ? b.tags : [];
-    tags.forEach(t => tagSet.add(t));
+    if (b && Array.isArray(b.tags)) {
+      b.tags.forEach(t => {
+        if (typeof t === 'string' && t.trim()) {
+          tagSet.add(t.trim());
+        }
+      });
+    }
   });
   return Array.from(tagSet).sort();
 };
@@ -140,17 +145,27 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     
     try {
       // Send API request
-      const { data: createdBookmark } = await bookmarkApi.create(data);
+      const response = await bookmarkApi.create(data);
+      const createdBookmark = response.data;
+      
+      // Ensure created bookmark has correct format
+      const normalizedBookmark: Bookmark = {
+        ...createdBookmark,
+        tags: Array.isArray(createdBookmark.tags) ? createdBookmark.tags : [],
+        is_frequent: !!createdBookmark.is_frequent,
+        frequent_order: createdBookmark.frequent_order || 0
+      };
       
       // Replace temp bookmark with real one
+      const updatedBookmarks = get().bookmarks.map(b => b.id === tempId ? normalizedBookmark : b);
       set({ 
-        bookmarks: get().bookmarks.map(b => b.id === tempId ? createdBookmark : b),
-        tags: extractTags(get().bookmarks.map(b => b.id === tempId ? createdBookmark : b))
+        bookmarks: updatedBookmarks,
+        tags: extractTags(updatedBookmarks)
       });
       
       if (data.is_frequent) {
         set({ 
-          frequentBookmarks: get().frequentBookmarks.map(b => b.id === tempId ? createdBookmark : b)
+          frequentBookmarks: get().frequentBookmarks.map(b => b.id === tempId ? normalizedBookmark : b)
         });
       }
     } catch (error) {
