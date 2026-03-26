@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Plus, Tag, X, Link2 } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Plus, Tag, X, Link2, Loader2 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark } from '../types';
 import { DraggableBookmark } from './DraggableBookmark';
@@ -10,6 +10,12 @@ interface BookmarkFormData {
   description: string;
   icon: string;
   tags: string;
+}
+
+interface FetchedMetadata {
+  title: string;
+  icon: string;
+  description: string;
 }
 
 export function BookmarkManager() {
@@ -34,14 +40,56 @@ export function BookmarkManager() {
     });
   }, [bookmarks, selectedTag, searchQuery]);
 
+  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
+
+  // Auto-fetch metadata when URL changes (with debounce)
+  useEffect(() => {
+    if (!formData.url.trim() || editingBookmark) return;
+
+    const timer = setTimeout(async () => {
+      let targetUrl = formData.url.trim();
+      if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+        targetUrl = 'https://' + targetUrl;
+      }
+
+      // Basic URL validation
+      try {
+        new URL(targetUrl);
+      } catch {
+        return;
+      }
+
+      setIsFetchingMetadata(true);
+      try {
+        const { data } = await bookmarkApi.fetchMetadata(targetUrl);
+        // Only update if user hasn't manually entered these fields
+        if (!formData.title.trim() && data.title) {
+          setFormData(prev => ({ ...prev, title: data.title }));
+        }
+        if (!formData.icon.trim() && data.icon) {
+          setFormData(prev => ({ ...prev, icon: data.icon }));
+        }
+        if (!formData.description.trim() && data.description) {
+          setFormData(prev => ({ ...prev, description: data.description }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch metadata:', err);
+      } finally {
+        setIsFetchingMetadata(false);
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [formData.url, editingBookmark]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.title.trim() && formData.url.trim()) {
+    if (formData.url.trim()) {
       await createBookmark({
-        title: formData.title,
+        title: formData.title.trim() || undefined,
         url: formData.url,
-        description: formData.description,
-        icon: formData.icon,
+        description: formData.description.trim() || undefined,
+        icon: formData.icon.trim() || undefined,
         tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
       });
       setFormData({ title: '', url: '', description: '', icon: '', tags: '' });
@@ -175,14 +223,16 @@ export function BookmarkManager() {
             
             <form onSubmit={editingBookmark ? handleUpdate : handleCreate} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">标题 *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  标题
+                  {isFetchingMetadata && <Loader2 size={14} className="inline ml-1 animate-spin text-blue-500" />}
+                </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  placeholder="输入书签标题"
-                  required
+                  placeholder="自动获取或自定义标题"
                 />
               </div>
               
