@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit2, Trash2, Search, Star, StarOff, ExternalLink, Tag, Filter } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, Search, Star, StarOff, ExternalLink, Tag, Filter, X, Link2 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark } from '../types';
+import { QuickAddBookmark } from '../components/QuickAddBookmark';
 
 interface BookmarkFormData {
   title: string;
@@ -15,7 +16,7 @@ interface BookmarkFormData {
 
 export function BookmarksPage() {
   const navigate = useNavigate();
-  const { bookmarks, tags, fetchBookmarks, fetchTags, createBookmark, updateBookmark, deleteBookmark, toggleFrequent } = useWorkspaceStore();
+  const { bookmarks, tags, fetchBookmarks, fetchTags, updateBookmark, deleteBookmark, toggleFrequent } = useWorkspaceStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -23,7 +24,6 @@ export function BookmarksPage() {
   const [formData, setFormData] = useState<BookmarkFormData>({ 
     title: '', url: '', description: '', icon: '', tags: '', is_frequent: false 
   });
-
   useEffect(() => {
     fetchBookmarks();
     fetchTags();
@@ -47,21 +47,27 @@ export function BookmarksPage() {
     return bookmarks.filter(b => b.is_frequent);
   }, [bookmarks]);
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.title.trim() && formData.url.trim()) {
-      await createBookmark({
-        title: formData.title,
-        url: formData.url,
-        description: formData.description,
-        icon: formData.icon,
-        tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
-        is_frequent: formData.is_frequent,
-      });
-      setFormData({ title: '', url: '', description: '', icon: '', tags: '', is_frequent: false });
-      setIsCreating(false);
-    }
-  };
+  // Auto-fetch metadata when URL changes (for edit mode)
+  useEffect(() => {
+    if (!formData.url.trim() || !editingBookmark) return;
+
+    const timer = setTimeout(async () => {
+      let targetUrl = formData.url.trim();
+      if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+        targetUrl = 'https://' + targetUrl;
+      }
+
+      try {
+        new URL(targetUrl);
+      } catch {
+        return;
+      }
+
+      // In edit mode, we don't auto-fetch, just validate URL format
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [formData.url, editingBookmark]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,9 +154,39 @@ export function BookmarksPage() {
                   className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all group"
                 >
                   {bookmark.icon ? (
-                    <img src={bookmark.icon} alt="" className="w-5 h-5 object-contain flex-shrink-0" />
+                    <img 
+                      src={bookmark.icon} 
+                      alt="" 
+                      className="w-5 h-5 object-contain flex-shrink-0"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        const urlObj = new URL(bookmark.url);
+                        target.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
+                        target.onerror = () => {
+                          target.style.display = 'none';
+                          const parent = target.parentElement!;
+                          const emoji = document.createElement('span');
+                          emoji.className = 'text-lg flex-shrink-0';
+                          emoji.textContent = '🔗';
+                          parent.insertBefore(emoji, target);
+                        };
+                      }}
+                    />
                   ) : (
-                    <span className="text-lg flex-shrink-0">🔗</span>
+                    <img 
+                      src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`}
+                      alt=""
+                      className="w-5 h-5 object-contain flex-shrink-0"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement!;
+                        const emoji = document.createElement('span');
+                        emoji.className = 'text-lg flex-shrink-0';
+                        emoji.textContent = '🔗';
+                        parent.insertBefore(emoji, target);
+                      }}
+                    />
                   )}
                   <span className="text-sm font-medium text-gray-700 truncate flex-1">{bookmark.title || bookmark.url || '未命名'}</span>
                   <ExternalLink size={14} className="text-gray-300 group-hover:text-gray-500 flex-shrink-0" />
@@ -215,9 +251,39 @@ export function BookmarksPage() {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
                       {bookmark.icon ? (
-                        <img src={bookmark.icon} alt="" className="w-6 h-6 object-contain" />
+                        <img 
+                          src={bookmark.icon} 
+                          alt="" 
+                          className="w-6 h-6 object-contain"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            const urlObj = new URL(bookmark.url);
+                            target.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
+                            target.onerror = () => {
+                              target.style.display = 'none';
+                              const parent = target.parentElement!;
+                              const emoji = document.createElement('span');
+                              emoji.className = 'text-lg';
+                              emoji.textContent = '🔗';
+                              parent.appendChild(emoji);
+                            };
+                          }}
+                        />
                       ) : (
-                        <span className="text-lg">🔗</span>
+                        <img 
+                          src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`}
+                          alt=""
+                          className="w-6 h-6 object-contain"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement!;
+                            const emoji = document.createElement('span');
+                            emoji.className = 'text-lg';
+                            emoji.textContent = '🔗';
+                            parent.appendChild(emoji);
+                          }}
+                        />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -306,39 +372,61 @@ export function BookmarksPage() {
         )}
       </div>
 
-      {/* Create/Edit Modal */}
-      {(isCreating || editingBookmark) && (
+      {/* Create Modal - Use QuickAddBookmark */}
+      {isCreating && (
+        <QuickAddBookmark 
+          isOpen={isCreating} 
+          onClose={() => setIsCreating(false)} 
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingBookmark && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              {editingBookmark ? '编辑书签' : '添加书签'}
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Link2 size={20} className="text-blue-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">编辑书签</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingBookmark(null);
+                  setFormData({ title: '', url: '', description: '', icon: '', tags: '', is_frequent: false });
+                }}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
             
-            <form onSubmit={editingBookmark ? handleUpdate : handleCreate} className="space-y-4">
+            <form onSubmit={handleUpdate} className="space-y-4">
+              {/* URL - Read Only */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">标题 *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">网址</label>
+                <input
+                  type="text"
+                  value={formData.url}
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-gray-500"
+                />
+              </div>
+              
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">标题</label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  placeholder="输入书签标题"
-                  required
+                  placeholder="书签标题"
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">URL *</label>
-                <input
-                  type="url"
-                  value={formData.url}
-                  onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  placeholder="https://example.com"
-                  required
-                />
-              </div>
-              
+              {/* Description */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">描述</label>
                 <textarea
@@ -350,6 +438,7 @@ export function BookmarksPage() {
                 />
               </div>
 
+              {/* Tags */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <Tag size={14} className="inline mr-1" />
@@ -364,6 +453,7 @@ export function BookmarksPage() {
                 />
               </div>
 
+              {/* Is Frequent */}
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -378,7 +468,6 @@ export function BookmarksPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setIsCreating(false);
                     setEditingBookmark(null);
                     setFormData({ title: '', url: '', description: '', icon: '', tags: '', is_frequent: false });
                   }}
@@ -390,7 +479,7 @@ export function BookmarksPage() {
                   type="submit"
                   className="flex-1 px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
                 >
-                  {editingBookmark ? '保存' : '添加'}
+                  保存
                 </button>
               </div>
             </form>

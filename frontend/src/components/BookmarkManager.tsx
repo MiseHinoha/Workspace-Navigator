@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Plus, Tag, X, Link2, Loader2, CheckCircle } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Tag, X, Link2 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark } from '../types';
 import { DraggableBookmark } from './DraggableBookmark';
+import { QuickAddBookmark } from './QuickAddBookmark';
 
 interface BookmarkFormData {
   title: string;
@@ -12,21 +13,13 @@ interface BookmarkFormData {
   tags: string;
 }
 
-interface FetchedMetadata {
-  title: string;
-  icon: string;
-  description: string;
-}
-
 export function BookmarkManager() {
-  const { bookmarks, tags, createBookmark, updateBookmark, deleteBookmark } = useWorkspaceStore();
+  const { bookmarks, tags, updateBookmark, deleteBookmark } = useWorkspaceStore();
   const [isCreating, setIsCreating] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState<BookmarkFormData>({ title: '', url: '', description: '', icon: '', tags: '' });
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   const filteredBookmarks = useMemo(() => {
     return bookmarks.filter((bookmark) => {
@@ -42,64 +35,7 @@ export function BookmarkManager() {
     });
   }, [bookmarks, selectedTag, searchQuery]);
 
-  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
-
-  // Auto-fetch metadata when URL changes (with debounce)
-  useEffect(() => {
-    if (!formData.url.trim() || editingBookmark) return;
-
-    const timer = setTimeout(async () => {
-      let targetUrl = formData.url.trim();
-      if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-        targetUrl = 'https://' + targetUrl;
-      }
-
-      // Basic URL validation
-      try {
-        new URL(targetUrl);
-      } catch {
-        return;
-      }
-
-      setIsFetchingMetadata(true);
-      try {
-        const { data } = await bookmarkApi.fetchMetadata(targetUrl);
-        // Only update if user hasn't manually entered these fields
-        if (!formData.title.trim() && data.title) {
-          setFormData(prev => ({ ...prev, title: data.title }));
-        }
-        if (!formData.icon.trim() && data.icon) {
-          setFormData(prev => ({ ...prev, icon: data.icon }));
-        }
-        if (!formData.description.trim() && data.description) {
-          setFormData(prev => ({ ...prev, description: data.description }));
-        }
-      } catch (err) {
-        console.error('Failed to fetch metadata:', err);
-      } finally {
-        setIsFetchingMetadata(false);
-      }
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, [formData.url, editingBookmark]);
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.url.trim()) {
-      await createBookmark({
-        title: formData.title.trim() || undefined,
-        url: formData.url,
-        description: formData.description.trim() || undefined,
-        icon: formData.icon.trim() || undefined,
-        tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
-      });
-      setFormData({ title: '', url: '', description: '', icon: '', tags: '' });
-      setIsCreating(false);
-      setSuccessMessage('书签添加成功！');
-      setShowSuccess(true);
-    }
-  };
+  // 使用 QuickAddBookmark 处理创建，这里只需要处理编辑
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,22 +71,6 @@ export function BookmarkManager() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Success Toast */}
-      {showSuccess && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 animate-slideInUp">
-          <div className="flex items-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg shadow-lg">
-            <CheckCircle size={18} />
-            <span className="text-sm font-medium">{successMessage}</span>
-            <button
-              onClick={() => setShowSuccess(false)}
-              className="ml-2 p-0.5 hover:bg-green-700 rounded"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        </div>
-      )}
-      
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">书签管理</h2>
@@ -221,75 +141,84 @@ export function BookmarkManager() {
         )}
       </div>
 
-      {/* Create/Edit Modal */}
-      {(isCreating || editingBookmark) && (
+      {/* Create Modal - Use QuickAddBookmark */}
+      {isCreating && (
+        <QuickAddBookmark 
+          isOpen={isCreating} 
+          onClose={() => setIsCreating(false)} 
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingBookmark && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {editingBookmark ? '编辑书签' : '添加书签'}
-              </h3>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Link2 size={20} className="text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">编辑书签</h3>
+              </div>
               <button
                 onClick={() => {
-                  setIsCreating(false);
                   setEditingBookmark(null);
                   setFormData({ title: '', url: '', description: '', icon: '', tags: '' });
                 }}
-                className="p-1.5 text-gray-400 hover:text-gray-600 rounded"
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
             
-            <form onSubmit={editingBookmark ? handleUpdate : handleCreate} className="space-y-4">
+            <form onSubmit={handleUpdate} className="space-y-4">
+              {/* URL Input - Read Only */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  标题
-                  {isFetchingMetadata && <Loader2 size={14} className="inline ml-1 animate-spin text-blue-500" />}
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">网址</label>
+                <input
+                  type="text"
+                  value={formData.url}
+                  disabled
+                  className="w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-500"
+                />
+              </div>
+
+              {/* Title Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">标题</label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  placeholder="自动获取或自定义标题"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  placeholder="书签标题"
                 />
               </div>
-              
+
+              {/* Description Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">URL *</label>
-                <input
-                  type="url"
-                  value={formData.url}
-                  onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  placeholder="https://example.com"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">描述</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">描述</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
                   rows={2}
                   placeholder="书签描述（可选）"
                 />
               </div>
 
+              {/* Tags Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   <Tag size={14} className="inline mr-1" />
-                  标签（用逗号分隔）
+                  标签
                 </label>
                 <input
                   type="text"
                   value={formData.tags}
                   onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  placeholder="工具, 文档, 常用"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  placeholder="用逗号分隔，如：工具, 文档, 常用"
                 />
               </div>
               
@@ -297,19 +226,18 @@ export function BookmarkManager() {
                 <button
                   type="button"
                   onClick={() => {
-                    setIsCreating(false);
                     setEditingBookmark(null);
                     setFormData({ title: '', url: '', description: '', icon: '', tags: '' });
                   }}
-                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className="flex-1 px-4 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                 >
                   取消
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                  className="flex-1 px-4 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
                 >
-                  {editingBookmark ? '保存' : '添加'}
+                  保存
                 </button>
               </div>
             </form>

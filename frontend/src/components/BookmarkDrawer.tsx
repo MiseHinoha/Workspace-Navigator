@@ -14,7 +14,7 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Use ref to store onClose to avoid dependency issues
   const onCloseRef = useRef(onClose);
@@ -260,9 +260,31 @@ function DraggableBookmarkItem({ bookmark, onDragStart: onDragStartProp, onDragE
       
       <div className="w-8 h-8 flex items-center justify-center bg-gray-50 rounded flex-shrink-0 overflow-hidden">
         {bookmark.icon ? (
-          <img src={bookmark.icon} alt="" className="w-5 h-5 object-contain" />
+          <img 
+            src={bookmark.icon} 
+            alt="" 
+            className="w-5 h-5 object-contain"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              const urlObj = new URL(bookmark.url);
+              target.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
+              target.onerror = () => {
+                target.style.display = 'none';
+                target.parentElement!.innerHTML = '<span class="text-sm">🔗</span>';
+              };
+            }}
+          />
         ) : (
-          <span className="text-sm">🔗</span>
+          <img 
+            src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`}
+            alt=""
+            className="w-5 h-5 object-contain"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              target.parentElement!.innerHTML = '<span class="text-sm">🔗</span>';
+            }}
+          />
         )}
       </div>
 

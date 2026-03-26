@@ -182,7 +182,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   updateBookmark: async (id, data) => {
-    const { bookmarks, frequentBookmarks } = get();
+    const { bookmarks, frequentBookmarks, pinnedCards } = get();
     const bookmark = bookmarks.find(b => b.id === id);
     if (!bookmark) return;
     
@@ -200,6 +200,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           : frequentBookmarks.map(b => b.id === id ? updatedBookmark : b)
       });
     }
+    
+    // Sync pinned cards that reference this bookmark
+    const updatedPinnedCards: Record<string, PinnedCard[]> = {};
+    Object.entries(pinnedCards).forEach(([key, cards]) => {
+      updatedPinnedCards[key] = cards.map(card => {
+        if (card.bookmark_id === id) {
+          return {
+            ...card,
+            title: data.title ?? card.title,
+            url: data.url ?? card.url,
+            description: data.description !== undefined ? data.description : card.description,
+            icon: data.icon !== undefined ? data.icon : card.icon,
+            tags: data.tags ?? card.tags,
+          };
+        }
+        return card;
+      });
+    });
+    set({ pinnedCards: updatedPinnedCards });
     
     try {
       await bookmarkApi.update(id, data);

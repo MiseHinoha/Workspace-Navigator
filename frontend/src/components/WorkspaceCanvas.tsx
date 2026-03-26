@@ -427,7 +427,16 @@ function PinnedCardItem({
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
             {card.icon ? (
-              <img src={card.icon} alt="" className="w-8 h-8 object-contain" />
+              <img 
+                src={card.icon} 
+                alt="" 
+                className="w-8 h-8 object-contain"
+                onError={(e) => {
+                  // Fallback to Google favicon on error
+                  const target = e.target as HTMLImageElement;
+                  target.src = getFavicon(card.url);
+                }}
+              />
             ) : (
               <img 
                 src={getFavicon(card.url)} 
