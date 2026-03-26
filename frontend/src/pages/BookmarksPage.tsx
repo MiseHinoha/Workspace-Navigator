@@ -222,7 +222,15 @@ export function BookmarksPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-gray-900 truncate">{bookmark.title || bookmark.url || '未命名'}</h3>
-                      <p className="text-xs text-gray-500 truncate">{new URL(bookmark.url).hostname}</p>
+                      <p className="text-xs text-gray-500 truncate">{
+                        (() => {
+                          try {
+                            return new URL(bookmark.url).hostname;
+                          } catch {
+                            return bookmark.url || '无效链接';
+                          }
+                        })()
+                      }</p>
                     </div>
                   </div>
                   
