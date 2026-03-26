@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Menu, X, Settings, LogOut, Bookmark, ChevronLeft } from 'lucide-react';
+import { Menu, X, Settings, LogOut, Bookmark, ChevronLeft, Plus } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { SearchBar } from '../components/SearchBar';
@@ -7,6 +7,7 @@ import { WorkspaceSelector } from '../components/WorkspaceSelector';
 import { WorkspaceCanvas } from '../components/WorkspaceCanvas';
 import { FrequentBookmarksBar } from '../components/FrequentBookmarksBar';
 import { BookmarkDrawer } from '../components/BookmarkDrawer';
+import { QuickAddBookmark } from '../components/QuickAddBookmark';
 import { sessionApi } from '../utils/api';
 
 export function Home() {
@@ -15,6 +16,7 @@ export function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [_sessions, setSessions] = useState<any[]>([]);
 
   useEffect(() => {
@@ -106,6 +108,27 @@ export function Home() {
 
             {/* Right: User & Settings */}
             <div className="flex items-center gap-2">
+              {/* Quick Add Bookmark Button */}
+              <button
+                onClick={() => setShowQuickAdd(true)}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                title="快速添加书签"
+              >
+                <Plus size={18} />
+                <span>添加书签</span>
+              </button>
+
+              {/* Mobile Quick Add Button */}
+              <button
+                onClick={() => setShowQuickAdd(true)}
+                className="sm:hidden p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="快速添加书签"
+              >
+                <Plus size={20} />
+              </button>
+
+              <div className="w-px h-6 bg-gray-200 mx-1" />
+
               <span className="text-sm text-gray-600 hidden sm:inline">{user?.username}</span>
               
               {user?.isAdmin && (
@@ -171,6 +194,9 @@ export function Home() {
 
       {/* Bookmark Drawer */}
       <BookmarkDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
+
+      {/* Quick Add Bookmark Modal */}
+      <QuickAddBookmark isOpen={showQuickAdd} onClose={() => setShowQuickAdd(false)} />
 
       {/* Settings Modal */}
       {showSettings && user?.isAdmin && (

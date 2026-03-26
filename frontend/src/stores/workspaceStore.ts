@@ -21,7 +21,7 @@ interface WorkspaceState {
   createWorkspace: (data: { name: string; description?: string; icon?: string }) => Promise<void>;
   updateWorkspace: (id: string, data: Partial<Workspace>) => Promise<void>;
   deleteWorkspace: (id: string) => Promise<void>;
-  createBookmark: (data: { title: string; url: string; description?: string; icon?: string; tags: string[]; is_frequent?: boolean }) => Promise<void>;
+  createBookmark: (data: { title?: string; url: string; description?: string; icon?: string; tags: string[]; is_frequent?: boolean }) => Promise<void>;
   updateBookmark: (id: string, data: Partial<Bookmark>) => Promise<void>;
   deleteBookmark: (id: string) => Promise<void>;
   toggleFrequent: (id: string, isFrequent: boolean) => Promise<void>;
