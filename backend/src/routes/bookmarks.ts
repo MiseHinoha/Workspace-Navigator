@@ -169,59 +169,45 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     // Auto-fetch metadata if title or icon is empty
     if (!title || !icon) {
       try {
-        // Try to fetch website HTML with multiple fallback strategies
-        let html = '';
+        console.log('Fetching metadata for:', url);
         
-        // Strategy 1: Normal axios request
-        try {
-          const response = await axios.get(url, {
-            timeout: 10000,
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-              'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-              'Cache-Control': 'no-cache',
-            },
-            maxRedirects: 10,
-            validateStatus: () => true, // Accept any status to handle manually
-            responseType: 'text',
-            transformResponse: [(data) => data], // Don't parse JSON
-          });
-          
-          if (response.status >= 200 && response.status < 400) {
-            html = response.data;
-          } else {
-            console.log('Non-OK status for:', url, response.status);
-          }
-        } catch (axiosError) {
-          console.log('Axios fetch failed for:', url, (axiosError as Error).message);
-        }
+        // Fetch website HTML
+        const response = await axios.get(url, {
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+          },
+          maxRedirects: 10,
+        });
         
-        // If we have HTML, parse it
-        if (html) {
-          const $ = cheerio.load(html, { decodeEntities: true });
+        const html = response.data;
+        const $ = cheerio.load(html, { decodeEntities: true });
+        
+        // Extract title
+        if (!title) {
+          const titleText = $('title').first().text().trim();
+          const ogTitle = $('meta[property="og:title"]').attr('content');
+          const twitterTitle = $('meta[name="twitter:title"]').attr('content');
           
-          // Extract title - try multiple selectors
-          if (!title) {
-            const titleText = $('title').first().text().trim();
-            const ogTitle = $('meta[property="og:title"]').attr('content');
-            const twitterTitle = $('meta[name="twitter:title"]').attr('content');
-            
-            title = titleText || ogTitle || twitterTitle || '';
-            
-            // Clean up title (remove site name suffix)
-            if (title) {
-              try {
-                const urlObj = new URL(url);
-                const hostname = urlObj.hostname.replace(/^www\./, '');
-                title = title.replace(new RegExp(`\\s*[-|]\\s*${hostname.replace(/\./g, '\\.')}\\s*$`, 'i'), '').trim();
-              } catch {
-                // Keep original title
-              }
+          title = titleText || ogTitle || twitterTitle || '';
+          
+          console.log('Raw title extracted:', { titleText, ogTitle, twitterTitle, final: title });
+          
+          // Clean up title (remove site name suffix)
+          if (title) {
+            try {
+              const urlObj = new URL(url);
+              const hostname = urlObj.hostname.replace(/^www\./, '');
+              title = title.replace(new RegExp(`\\s*[-|]\\s*${hostname.replace(/\./g, '\\.')}\\s*$`, 'i'), '').trim();
+            } catch {
+              // Keep original title
             }
-            
-            console.log('Title for', url, ':', title || '(empty)');
           }
+          
+          console.log('Final title for', url, ':', title);
+        }
         
         // Extract icon
         if (!icon) {
