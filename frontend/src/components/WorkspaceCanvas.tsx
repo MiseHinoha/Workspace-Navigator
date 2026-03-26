@@ -440,8 +440,16 @@ function PinnedCardItem({
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 truncate">{card.title}</h3>
-            <p className="text-xs text-gray-500 truncate">{new URL(card.url).hostname}</p>
+            <h3 className="font-semibold text-gray-900 truncate">{card.title || card.url || '未命名'}</h3>
+            <p className="text-xs text-gray-500 truncate">{
+              (() => {
+                try {
+                  return new URL(card.url).hostname;
+                } catch {
+                  return card.url || '无效链接';
+                }
+              })()
+            }</p>
           </div>
         </div>
       </div>

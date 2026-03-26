@@ -169,58 +169,92 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     // Auto-fetch metadata if title or icon is empty
     if (!title || !icon) {
       try {
+        // Try to fetch website HTML
         const response = await axios.get(url, {
-          timeout: 10000,
+          timeout: 8000,
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
           },
-          maxRedirects: 5
+          maxRedirects: 5,
+          validateStatus: (status) => status < 400
         });
 
         const $ = cheerio.load(response.data);
         
+        // Extract title
         if (!title) {
-          title = $('title').text().trim() || 
+          title = $('title').first().text().trim() || 
                   $('meta[property="og:title"]').attr('content') || 
-                  new URL(url).hostname;
+                  $('meta[name="twitter:title"]').attr('content') ||
+                  '';
         }
         
+        // Extract icon
         if (!icon) {
-          icon = $('link[rel="icon"]').attr('href') || 
-                 $('link[rel="shortcut icon"]').attr('href') || 
-                 $('link[rel="apple-touch-icon"]').attr('href');
+          // Try different icon selectors
+          const iconSelectors = [
+            'link[rel="apple-touch-icon"][sizes="180x180"]',
+            'link[rel="apple-touch-icon"][sizes="152x152"]',
+            'link[rel="apple-touch-icon"][sizes="144x144"]',
+            'link[rel="apple-touch-icon"][sizes="120x120"]',
+            'link[rel="apple-touch-icon"][sizes="114x114"]',
+            'link[rel="apple-touch-icon"][sizes="72x72"]',
+            'link[rel="apple-touch-icon"]',
+            'link[rel="icon"][type="image/png"]',
+            'link[rel="icon"][sizes="32x32"]',
+            'link[rel="icon"][sizes="16x16"]',
+            'link[rel="shortcut icon"]',
+            'link[rel="icon"]',
+            'meta[property="og:image"]',
+            'meta[name="twitter:image"]'
+          ];
           
-          // Convert relative icon URL to absolute
-          if (icon && !icon.startsWith('http')) {
-            const urlObj = new URL(url);
-            if (icon.startsWith('/')) {
-              icon = `${urlObj.protocol}//${urlObj.host}${icon}`;
-            } else {
-              icon = `${urlObj.protocol}//${urlObj.host}/${icon}`;
+          for (const selector of iconSelectors) {
+            const href = $(selector).attr('href') || $(selector).attr('content');
+            if (href) {
+              icon = href;
+              break;
             }
           }
           
-          // Fallback to Google favicon service
-          if (!icon) {
-            const urlObj = new URL(url);
-            icon = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`;
+          // Convert relative icon URL to absolute
+          if (icon && !icon.startsWith('http')) {
+            try {
+              const urlObj = new URL(url);
+              if (icon.startsWith('/')) {
+                icon = `${urlObj.protocol}//${urlObj.host}${icon}`;
+              } else if (icon.startsWith('./')) {
+                icon = `${urlObj.protocol}//${urlObj.host}${icon.slice(1)}`;
+              } else {
+                icon = `${urlObj.protocol}//${urlObj.host}/${icon}`;
+              }
+            } catch {
+              // Invalid URL, keep original
+            }
           }
         }
         
+        // Extract description
         if (!description) {
           description = $('meta[name="description"]').attr('content') || 
                        $('meta[property="og:description"]').attr('content') || 
+                       $('meta[name="twitter:description"]').attr('content') ||
                        '';
         }
       } catch (fetchError) {
-        // If fetching fails, use fallback values
-        if (!title) {
-          title = new URL(url).hostname;
-        }
-        if (!icon) {
-          const urlObj = new URL(url);
-          icon = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`;
-        }
+        console.log('Failed to fetch metadata for:', url, fetchError);
+        // Use fallback values on error
+      }
+      
+      // Always set fallback values if still empty
+      const urlObj = new URL(url);
+      if (!title) {
+        title = urlObj.hostname.replace(/^www\./, '');
+      }
+      if (!icon) {
+        icon = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`;
       }
     }
 
