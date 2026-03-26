@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { X, Plus, Folder, FolderOpen, Edit2, Trash2, ExternalLink } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark, PinnedCard, Group } from '../types';
+import { AutoScrollTitle } from './AutoScrollTitle';
 
 export function WorkspaceCanvas() {
   const { 
@@ -425,46 +426,45 @@ function PinnedCardItem({
       {/* Card Content - Flex column with fixed footer */}
       <div className="flex flex-col h-full">
         {/* Card Header */}
-        <div className="flex items-start p-4 pr-14">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
-              {card.icon ? (
-                <img 
-                  src={card.icon} 
-                  alt="" 
-                  className="w-8 h-8 object-contain"
-                  onError={(e) => {
-                    // Fallback to Google favicon on error
-                    const target = e.target as HTMLImageElement;
-                    target.src = getFavicon(card.url);
-                  }}
-                />
-              ) : (
-                <img 
-                  src={getFavicon(card.url)} 
-                  alt="" 
-                  className="w-8 h-8 object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              )}
-            </div>
-            <div className="flex-1 min-w-0" style={{ maxWidth: 'calc(100% - 60px)' }}>
-              {/* Scrollable title */}
-              <div className="overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
-                <h3 className="font-semibold text-gray-900 whitespace-nowrap pr-2">{card.title || card.url || '未命名'}</h3>
-              </div>
-              <p className="text-xs text-gray-500 truncate">{
-                (() => {
-                  try {
-                    return new URL(card.url).hostname;
-                  } catch {
-                    return card.url || '无效链接';
-                  }
-                })()
-              }</p>
-            </div>
+        <div className="flex items-start gap-3 p-4 pr-14 min-w-0">
+          <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+            {card.icon ? (
+              <img 
+                src={card.icon} 
+                alt="" 
+                className="w-8 h-8 object-contain"
+                onError={(e) => {
+                  // Fallback to Google favicon on error
+                  const target = e.target as HTMLImageElement;
+                  target.src = getFavicon(card.url);
+                }}
+              />
+            ) : (
+              <img 
+                src={getFavicon(card.url)} 
+                alt="" 
+                className="w-8 h-8 object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            )}
+          </div>
+          <div className="flex-1 min-w-0 overflow-hidden">
+            {/* Auto-scroll title on hover */}
+            <AutoScrollTitle 
+              title={card.title || card.url || '未命名'} 
+              className="font-semibold text-gray-900"
+            />
+            <p className="text-xs text-gray-500 truncate">{
+              (() => {
+                try {
+                  return new URL(card.url).hostname;
+                } catch {
+                  return card.url || '无效链接';
+                }
+              })()
+            }</p>
           </div>
         </div>
 

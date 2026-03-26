@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark } from '../types';
 import { QuickAddBookmark } from '../components/QuickAddBookmark';
 import { TagInput } from '../components/TagInput';
+import { AutoScrollTitle } from '../components/AutoScrollTitle';
 
 interface BookmarkFormData {
   title: string;
@@ -288,11 +289,12 @@ export function BookmarksPage() {
                         />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0" style={{ maxWidth: 'calc(100% - 60px)' }}>
-                      {/* Scrollable title */}
-                      <div className="overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
-                        <h3 className="font-semibold text-gray-900 whitespace-nowrap pr-2">{bookmark.title || bookmark.url || '未命名'}</h3>
-                      </div>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      {/* Auto-scroll title on hover */}
+                      <AutoScrollTitle 
+                        title={bookmark.title || bookmark.url || '未命名'} 
+                        className="font-semibold text-gray-900"
+                      />
                       <p className="text-xs text-gray-500 truncate">{
                         (() => {
                           try {
