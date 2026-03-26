@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 import db from '../models/database';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
 import { BookmarkRow } from '../types';
@@ -35,6 +37,82 @@ router.get('/', authMiddleware, (req: AuthenticatedRequest, res) => {
     res.json(parsedBookmarks);
   } catch (error) {
     res.status(500).json({ error: 'Failed to get bookmarks' });
+  }
+});
+
+// Fetch website metadata (title, icon) from URL
+router.get('/fetch-metadata', authMiddleware, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { url } = req.query;
+    
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+
+    // Ensure URL has protocol
+    let targetUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      targetUrl = 'https://' + url;
+    }
+
+    try {
+      const response = await axios.get(targetUrl, {
+        timeout: 10000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        },
+        maxRedirects: 5
+      });
+
+      const $ = cheerio.load(response.data);
+      
+      // Get title
+      const title = $('title').text().trim() || 
+                    $('meta[property="og:title"]').attr('content') || 
+                    $('meta[name="twitter:title"]').attr('content') || 
+                    '';
+      
+      // Get icon
+      let icon = $('link[rel="icon"]').attr('href') || 
+                 $('link[rel="shortcut icon"]').attr('href') || 
+                 $('link[rel="apple-touch-icon"]').attr('href') ||
+                 $('meta[property="og:image"]').attr('content') ||
+                 '';
+      
+      // Convert relative icon URL to absolute
+      if (icon && !icon.startsWith('http')) {
+        const urlObj = new URL(targetUrl);
+        if (icon.startsWith('/')) {
+          icon = `${urlObj.protocol}//${urlObj.host}${icon}`;
+        } else {
+          icon = `${urlObj.protocol}//${urlObj.host}/${icon}`;
+        }
+      }
+      
+      // Get description
+      const description = $('meta[name="description"]').attr('content') || 
+                         $('meta[property="og:description"]').attr('content') || 
+                         '';
+
+      res.json({
+        title: title || new URL(targetUrl).hostname,
+        icon: icon || '',
+        description: description || '',
+        url: targetUrl
+      });
+    } catch (fetchError) {
+      // If fetching fails, return basic info from URL
+      const urlObj = new URL(targetUrl);
+      res.json({
+        title: urlObj.hostname,
+        icon: `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`,
+        description: '',
+        url: targetUrl
+      });
+    }
+  } catch (error) {
+    console.error('Fetch metadata error:', error);
+    res.status(500).json({ error: 'Failed to fetch metadata' });
   }
 });
 
@@ -75,12 +153,75 @@ router.get('/frequent', authMiddleware, (req: AuthenticatedRequest, res) => {
 });
 
 // Create bookmark
-router.post('/', authMiddleware, (req: AuthenticatedRequest, res) => {
+router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
-    const { title, url, description, icon, tags, is_frequent } = req.body;
+    let { title, url, description, icon, tags, is_frequent } = req.body;
     
-    if (!title || !url) {
-      return res.status(400).json({ error: 'Title and URL are required' });
+    if (!url) {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+
+    // Ensure URL has protocol
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+
+    // Auto-fetch metadata if title or icon is empty
+    if (!title || !icon) {
+      try {
+        const response = await axios.get(url, {
+          timeout: 10000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          },
+          maxRedirects: 5
+        });
+
+        const $ = cheerio.load(response.data);
+        
+        if (!title) {
+          title = $('title').text().trim() || 
+                  $('meta[property="og:title"]').attr('content') || 
+                  new URL(url).hostname;
+        }
+        
+        if (!icon) {
+          icon = $('link[rel="icon"]').attr('href') || 
+                 $('link[rel="shortcut icon"]').attr('href') || 
+                 $('link[rel="apple-touch-icon"]').attr('href');
+          
+          // Convert relative icon URL to absolute
+          if (icon && !icon.startsWith('http')) {
+            const urlObj = new URL(url);
+            if (icon.startsWith('/')) {
+              icon = `${urlObj.protocol}//${urlObj.host}${icon}`;
+            } else {
+              icon = `${urlObj.protocol}//${urlObj.host}/${icon}`;
+            }
+          }
+          
+          // Fallback to Google favicon service
+          if (!icon) {
+            const urlObj = new URL(url);
+            icon = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`;
+          }
+        }
+        
+        if (!description) {
+          description = $('meta[name="description"]').attr('content') || 
+                       $('meta[property="og:description"]').attr('content') || 
+                       '';
+        }
+      } catch (fetchError) {
+        // If fetching fails, use fallback values
+        if (!title) {
+          title = new URL(url).hostname;
+        }
+        if (!icon) {
+          const urlObj = new URL(url);
+          icon = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`;
+        }
+      }
     }
 
     const id = uuidv4();
