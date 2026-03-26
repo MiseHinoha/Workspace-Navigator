@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Link2, Loader2, Tag, Globe, FileText } from 'lucide-react';
+import { X, Link2, Loader2, Tag, Globe, FileText, CheckCircle } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 
 interface QuickAddBookmarkProps {
@@ -23,6 +23,8 @@ export function QuickAddBookmark({ isOpen, onClose }: QuickAddBookmarkProps) {
     }
   }, [isOpen]);
 
+  const [showSuccess, setShowSuccess] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -41,6 +43,9 @@ export function QuickAddBookmark({ isOpen, onClose }: QuickAddBookmarkProps) {
         description: description.trim() || undefined,
         tags: tags.split(',').map(t => t.trim()).filter(Boolean),
       });
+      
+      // Show success message
+      setShowSuccess(true);
       
       // Reset form
       setUrl('');
@@ -63,9 +68,26 @@ export function QuickAddBookmark({ isOpen, onClose }: QuickAddBookmarkProps) {
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !showSuccess) return null;
 
   return (
+    <>
+      {/* Success Toast */}
+      {showSuccess && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] animate-slideInUp">
+          <div className="flex items-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg shadow-lg">
+            <CheckCircle size={18} />
+            <span className="text-sm font-medium">书签添加成功！</span>
+            <button
+              onClick={() => setShowSuccess(false)}
+              className="ml-2 p-0.5 hover:bg-green-700 rounded"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+    
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
       <div 
         className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6 transform transition-all"
@@ -177,5 +199,6 @@ export function QuickAddBookmark({ isOpen, onClose }: QuickAddBookmarkProps) {
         </form>
       </div>
     </div>
+    </>
   );
 }
