@@ -288,10 +288,10 @@ export function BookmarksPage() {
                         />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="flex-1 min-w-0" style={{ maxWidth: 'calc(100% - 60px)' }}>
                       {/* Scrollable title */}
-                      <div className="overflow-x-auto scrollbar-hide">
-                        <h3 className="font-semibold text-gray-900 whitespace-nowrap">{bookmark.title || bookmark.url || '未命名'}</h3>
+                      <div className="overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+                        <h3 className="font-semibold text-gray-900 whitespace-nowrap pr-2">{bookmark.title || bookmark.url || '未命名'}</h3>
                       </div>
                       <p className="text-xs text-gray-500 truncate">{
                         (() => {
