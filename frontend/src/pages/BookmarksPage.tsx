@@ -4,13 +4,14 @@ import { ArrowLeft, Plus, Edit2, Trash2, Search, Star, StarOff, ExternalLink, Ta
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark } from '../types';
 import { QuickAddBookmark } from '../components/QuickAddBookmark';
+import { TagInput } from '../components/TagInput';
 
 interface BookmarkFormData {
   title: string;
   url: string;
   description: string;
   icon: string;
-  tags: string;
+  tags: string[];
   is_frequent: boolean;
 }
 
@@ -22,7 +23,7 @@ export function BookmarksPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
   const [formData, setFormData] = useState<BookmarkFormData>({ 
-    title: '', url: '', description: '', icon: '', tags: '', is_frequent: false 
+    title: '', url: '', description: '', icon: '', tags: [], is_frequent: false 
   });
   useEffect(() => {
     fetchBookmarks();
@@ -77,11 +78,11 @@ export function BookmarksPage() {
         url: formData.url,
         description: formData.description,
         icon: formData.icon,
-        tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
+        tags: formData.tags,
         is_frequent: formData.is_frequent,
       });
       setEditingBookmark(null);
-      setFormData({ title: '', url: '', description: '', icon: '', tags: '', is_frequent: false });
+      setFormData({ title: '', url: '', description: '', icon: '', tags: [], is_frequent: false });
     }
   };
 
@@ -98,7 +99,7 @@ export function BookmarksPage() {
       url: bookmark.url,
       description: bookmark.description || '',
       icon: bookmark.icon || '',
-      tags: Array.isArray(bookmark.tags) ? bookmark.tags.join(', ') : '',
+      tags: Array.isArray(bookmark.tags) ? bookmark.tags : [],
       is_frequent: bookmark.is_frequent,
     });
   };
@@ -244,12 +245,13 @@ export function BookmarksPage() {
           {filteredBookmarks.map((bookmark) => (
             <div
               key={bookmark.id}
-              className="group bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all overflow-hidden"
+              className="group bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all overflow-hidden flex flex-col h-[200px]"
             >
-              <div className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
+              {/* Header */}
+              <div className="p-4 pb-2">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
                       {bookmark.icon ? (
                         <img 
                           src={bookmark.icon} 
@@ -286,8 +288,11 @@ export function BookmarksPage() {
                         />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 truncate">{bookmark.title || bookmark.url || '未命名'}</h3>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      {/* Scrollable title */}
+                      <div className="overflow-x-auto scrollbar-hide">
+                        <h3 className="font-semibold text-gray-900 whitespace-nowrap">{bookmark.title || bookmark.url || '未命名'}</h3>
+                      </div>
                       <p className="text-xs text-gray-500 truncate">{
                         (() => {
                           try {
@@ -300,7 +305,7 @@ export function BookmarksPage() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                     <button
                       onClick={() => handleToggleFrequent(bookmark)}
                       className={`p-1.5 rounded transition-colors ${
@@ -314,13 +319,16 @@ export function BookmarksPage() {
                     </button>
                   </div>
                 </div>
+              </div>
 
+              {/* Middle Content - Flexible */}
+              <div className="flex-1 px-4 py-2 overflow-hidden">
                 {bookmark.description && (
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{bookmark.description}</p>
+                  <p className="text-sm text-gray-600 line-clamp-2 mb-2">{bookmark.description}</p>
                 )}
 
                 {bookmark.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-3">
+                  <div className="flex flex-wrap gap-1">
                     {bookmark.tags.map((tag) => (
                       <span
                         key={tag}
@@ -331,8 +339,11 @@ export function BookmarksPage() {
                     ))}
                   </div>
                 )}
+              </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+              {/* Fixed Footer */}
+              <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50 mt-auto">
+                <div className="flex items-center justify-between">
                   <a
                     href={bookmark.url}
                     target="_blank"
@@ -394,7 +405,7 @@ export function BookmarksPage() {
               <button
                 onClick={() => {
                   setEditingBookmark(null);
-                  setFormData({ title: '', url: '', description: '', icon: '', tags: '', is_frequent: false });
+                  setFormData({ title: '', url: '', description: '', icon: '', tags: [], is_frequent: false });
                 }}
                 className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
@@ -442,14 +453,13 @@ export function BookmarksPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <Tag size={14} className="inline mr-1" />
-                  标签（用逗号分隔）
+                  标签
                 </label>
-                <input
-                  type="text"
+                <TagInput
                   value={formData.tags}
-                  onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  placeholder="工具, 文档, 常用"
+                  onChange={(newTags) => setFormData({ ...formData, tags: newTags })}
+                  availableTags={tags}
+                  placeholder="输入或选择标签"
                 />
               </div>
 
@@ -469,7 +479,7 @@ export function BookmarksPage() {
                   type="button"
                   onClick={() => {
                     setEditingBookmark(null);
-                    setFormData({ title: '', url: '', description: '', icon: '', tags: '', is_frequent: false });
+                    setFormData({ title: '', url: '', description: '', icon: '', tags: [], is_frequent: false });
                   }}
                   className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                 >

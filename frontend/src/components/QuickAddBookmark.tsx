@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Link2, Loader2, Tag, Globe, FileText } from 'lucide-react';
+import { X, Link2, Loader2, Globe, FileText } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
+import { TagInput } from './TagInput';
 
 interface QuickAddBookmarkProps {
   isOpen: boolean;
@@ -9,9 +10,9 @@ interface QuickAddBookmarkProps {
 }
 
 export function QuickAddBookmark({ isOpen, onClose, onSuccess }: QuickAddBookmarkProps) {
-  const { createBookmark, bookmarks } = useWorkspaceStore();
+  const { createBookmark, bookmarks, tags: availableTags } = useWorkspaceStore();
   const [url, setUrl] = useState('');
-  const [tags, setTags] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -61,12 +62,12 @@ export function QuickAddBookmark({ isOpen, onClose, onSuccess }: QuickAddBookmar
       await createBookmark({
         url: url.trim(),
         description: description.trim() || undefined,
-        tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+        tags: selectedTags,
       });
       
       // Reset form and close
       setUrl('');
-      setTags('');
+      setSelectedTags([]);
       setDescription('');
       onSuccess?.();
       onClose();
@@ -80,7 +81,7 @@ export function QuickAddBookmark({ isOpen, onClose, onSuccess }: QuickAddBookmar
 
   const handleClose = () => {
     setUrl('');
-    setTags('');
+    setSelectedTags([]);
     setDescription('');
     setError('');
     onClose();
@@ -143,15 +144,13 @@ export function QuickAddBookmark({ isOpen, onClose, onSuccess }: QuickAddBookmar
           {/* Tags Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              <Tag size={14} className="inline mr-1" />
               标签
             </label>
-            <input
-              type="text"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-              placeholder="用逗号分隔，如：工具, 文档, 常用"
+            <TagInput
+              value={selectedTags}
+              onChange={setSelectedTags}
+              availableTags={availableTags}
+              placeholder="输入或选择标签"
               disabled={isLoading}
             />
           </div>
