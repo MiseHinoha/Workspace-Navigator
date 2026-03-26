@@ -13,6 +13,7 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Use ref to store onClose to avoid dependency issues
@@ -103,7 +104,7 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
       {/* Backdrop - click to close, hide immediately when closing */}
       {!isClosing && (
         <div 
-          className="fixed inset-0 bg-black/20 z-40 animate-fadeIn"
+          className={`fixed inset-0 bg-black/20 z-40 animate-fadeIn transition-all ${isDragging ? 'pointer-events-none' : ''}`}
           onClick={handleClose}
         />
       )}
@@ -186,7 +187,12 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
             searchQuery ? (
               <div className="space-y-2">
                 {filteredBookmarks.map((bookmark) => (
-                  <DraggableBookmarkItem key={bookmark.id} bookmark={bookmark} />
+                  <DraggableBookmarkItem 
+                    key={bookmark.id} 
+                    bookmark={bookmark} 
+                    onDragStart={() => setIsDragging(true)}
+                    onDragEnd={() => setIsDragging(false)}
+                  />
                 ))}
               </div>
             ) : (
@@ -195,7 +201,12 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
                   <h3 className="text-xs font-semibold text-gray-400 uppercase px-2 mb-2">{letter}</h3>
                   <div className="space-y-2">
                     {items.map((bookmark) => (
-                      <DraggableBookmarkItem key={bookmark.id} bookmark={bookmark} />
+                      <DraggableBookmarkItem 
+                        key={bookmark.id} 
+                        bookmark={bookmark}
+                        onDragStart={() => setIsDragging(true)}
+                        onDragEnd={() => setIsDragging(false)}
+                      />
                     ))}
                   </div>
                 </div>
@@ -213,7 +224,7 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
   );
 }
 
-function DraggableBookmarkItem({ bookmark }: { bookmark: BookmarkType }) {
+function DraggableBookmarkItem({ bookmark, onDragStart: onDragStartProp, onDragEnd: onDragEndProp }: { bookmark: BookmarkType; onDragStart?: () => void; onDragEnd?: () => void }) {
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     console.log('Native drag start:', bookmark);
     
@@ -223,12 +234,16 @@ function DraggableBookmarkItem({ bookmark }: { bookmark: BookmarkType }) {
     e.dataTransfer.setData('text/plain', data); // Fallback
     e.dataTransfer.effectAllowed = 'copy';
     
+    // Notify parent that dragging has started
+    onDragStartProp?.();
+    
     // Set a drag image if desired (optional)
     // e.dataTransfer.setDragImage(element, 0, 0);
   };
 
   const handleDragEnd = (_e: React.DragEvent<HTMLDivElement>) => {
     console.log('Native drag end');
+    onDragEndProp?.();
   };
 
   return (
