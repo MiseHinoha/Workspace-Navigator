@@ -190,7 +190,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
         });
         
         const html = response.data;
-        const $ = cheerio.load(html, { decodeEntities: true });
+        const $ = cheerio.load(html);
         
         // Extract title
         if (!title) {
