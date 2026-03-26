@@ -118,11 +118,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const newBookmark: Bookmark = {
       id: tempId,
       user_id: 'current-user',
-      title: data.title,
+      title: data.title || data.url,
       url: data.url,
       description: data.description || '',
       icon: data.icon || '',
-      tags: data.tags,
+      tags: data.tags || [],
       is_frequent: data.is_frequent || false,
       frequent_order: data.is_frequent ? frequentBookmarks.length + 1 : 0,
       created_at: new Date().toISOString(),
