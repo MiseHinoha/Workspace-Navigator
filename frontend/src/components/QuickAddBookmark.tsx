@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Link2, Loader2, Tag, Globe } from 'lucide-react';
-import { bookmarkApi } from '../utils/api';
+import { X, Link2, Loader2, Tag, Globe, FileText } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 
 interface QuickAddBookmarkProps {
@@ -11,11 +10,9 @@ interface QuickAddBookmarkProps {
 export function QuickAddBookmark({ isOpen, onClose }: QuickAddBookmarkProps) {
   const { createBookmark } = useWorkspaceStore();
   const [url, setUrl] = useState('');
-  const [title, setTitle] = useState('');
-  const [icon, setIcon] = useState('');
   const [tags, setTags] = useState('');
+  const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState('');
   const urlInputRef = useRef<HTMLInputElement>(null);
 
@@ -25,45 +22,6 @@ export function QuickAddBookmark({ isOpen, onClose }: QuickAddBookmarkProps) {
       setTimeout(() => urlInputRef.current?.focus(), 100);
     }
   }, [isOpen]);
-
-  // Auto-fetch metadata when URL changes (with debounce)
-  useEffect(() => {
-    if (!url.trim()) {
-      setTitle('');
-      setIcon('');
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      let targetUrl = url.trim();
-      if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-        targetUrl = 'https://' + targetUrl;
-      }
-
-      // Basic URL validation
-      try {
-        new URL(targetUrl);
-      } catch {
-        return;
-      }
-
-      setIsFetching(true);
-      setError('');
-
-      try {
-        const { data } = await bookmarkApi.fetchMetadata(targetUrl);
-        setTitle(data.title || '');
-        setIcon(data.icon || '');
-      } catch (err) {
-        console.error('Failed to fetch metadata:', err);
-        // Don't show error, just leave fields empty
-      } finally {
-        setIsFetching(false);
-      }
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, [url]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,18 +35,17 @@ export function QuickAddBookmark({ isOpen, onClose }: QuickAddBookmarkProps) {
     setError('');
 
     try {
+      // 后端会自动获取标题和图标
       await createBookmark({
         url: url.trim(),
-        title: title.trim() || undefined,
-        icon: icon.trim() || undefined,
+        description: description.trim() || undefined,
         tags: tags.split(',').map(t => t.trim()).filter(Boolean),
       });
       
       // Reset form
       setUrl('');
-      setTitle('');
-      setIcon('');
       setTags('');
+      setDescription('');
       onClose();
     } catch (err) {
       setError('添加书签失败，请重试');
@@ -100,9 +57,8 @@ export function QuickAddBookmark({ isOpen, onClose }: QuickAddBookmarkProps) {
 
   const handleClose = () => {
     setUrl('');
-    setTitle('');
-    setIcon('');
     setTags('');
+    setDescription('');
     setError('');
     onClose();
   };
@@ -155,59 +111,10 @@ export function QuickAddBookmark({ isOpen, onClose }: QuickAddBookmarkProps) {
                 disabled={isLoading}
               />
               <Globe size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              {isFetching && (
-                <Loader2 size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500 animate-spin" />
-              )}
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              输入网址后自动获取网站标题和图标
+              系统会自动获取网站标题和图标
             </p>
-          </div>
-
-          {/* Title Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              标题
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-              placeholder="自动获取或自定义标题"
-              disabled={isLoading || isFetching}
-            />
-          </div>
-
-          {/* Icon Preview & Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              图标
-            </label>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 flex items-center justify-center bg-gray-50 border border-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                {icon ? (
-                  <img 
-                    src={icon} 
-                    alt="" 
-                    className="w-8 h-8 object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '';
-                    }}
-                  />
-                ) : (
-                  <Globe size={20} className="text-gray-300" />
-                )}
-              </div>
-              <input
-                type="text"
-                value={icon}
-                onChange={(e) => setIcon(e.target.value)}
-                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
-                placeholder="自动获取或自定义图标URL"
-                disabled={isLoading}
-              />
-            </div>
           </div>
 
           {/* Tags Input */}
@@ -222,6 +129,22 @@ export function QuickAddBookmark({ isOpen, onClose }: QuickAddBookmarkProps) {
               onChange={(e) => setTags(e.target.value)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               placeholder="用逗号分隔，如：工具, 文档, 常用"
+              disabled={isLoading}
+            />
+          </div>
+
+          {/* Description Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <FileText size={14} className="inline mr-1" />
+              描述
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
+              rows={3}
+              placeholder="添加描述（可选）"
               disabled={isLoading}
             />
           </div>
