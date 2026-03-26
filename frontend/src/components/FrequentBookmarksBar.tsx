@@ -93,7 +93,7 @@ export function FrequentBookmarksBar() {
                 ) : (
                   <span className="text-xs">🔗</span>
                 )}
-                <span className="max-w-[120px] truncate">{bookmark.title}</span>
+                <span className="max-w-[120px] truncate">{bookmark.title || bookmark.url || '未命名'}</span>
               </a>
             ))}
           </div>
@@ -154,7 +154,7 @@ export function FrequentBookmarksBar() {
                           onChange={(e) => handleToggleFrequent(bookmark.id, e.target.checked)}
                           className="w-4 h-4 text-blue-600 rounded border-gray-300"
                         />
-                        <span className="text-sm text-gray-700 truncate flex-1">{bookmark.title}</span>
+                        <span className="text-sm text-gray-700 truncate flex-1">{bookmark.title || bookmark.url || '未命名'}</span>
                       </label>
                     ))
                   ) : (
@@ -177,7 +177,7 @@ export function FrequentBookmarksBar() {
                           ) : (
                             <span>🔗</span>
                           )}
-                          <span className="text-sm text-gray-700 truncate">{bookmark.title}</span>
+                          <span className="text-sm text-gray-700 truncate">{bookmark.title || bookmark.url || '未命名'}</span>
                         </a>
                       </div>
                     ))

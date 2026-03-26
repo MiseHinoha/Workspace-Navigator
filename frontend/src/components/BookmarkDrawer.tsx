@@ -74,12 +74,14 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
 
   const filteredBookmarks = useMemo(() => {
     return bookmarks.filter((bookmark) => {
-      const matchesTag = !selectedTag || bookmark.tags.includes(selectedTag);
+      const matchesTag = !selectedTag || (bookmark.tags && bookmark.tags.includes(selectedTag));
       const query = searchQuery.toLowerCase();
+      const title = bookmark.title || '';
+      const url = bookmark.url || '';
       const matchesSearch = !searchQuery || 
-        bookmark.title.toLowerCase().includes(query) ||
-        bookmark.url.toLowerCase().includes(query) ||
-        bookmark.tags.some(tag => tag.toLowerCase().includes(query));
+        title.toLowerCase().includes(query) ||
+        url.toLowerCase().includes(query) ||
+        (bookmark.tags && bookmark.tags.some(tag => tag && tag.toLowerCase().includes(query)));
       return matchesTag && matchesSearch;
     });
   }, [bookmarks, selectedTag, searchQuery]);
@@ -87,7 +89,8 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
   const groupedBookmarks = useMemo(() => {
     const groups: Record<string, BookmarkType[]> = {};
     filteredBookmarks.forEach(bookmark => {
-      const firstChar = bookmark.title.charAt(0).toUpperCase();
+      const title = bookmark.title || bookmark.url || '未命名';
+      const firstChar = title.charAt(0).toUpperCase();
       const key = /^[A-Z]/.test(firstChar) ? firstChar : '#';
       if (!groups[key]) groups[key] = [];
       groups[key].push(bookmark);
@@ -264,7 +267,7 @@ function DraggableBookmarkItem({ bookmark, onDragStart: onDragStartProp, onDragE
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">{bookmark.title}</p>
+        <p className="text-sm font-medium text-gray-900 truncate">{bookmark.title || bookmark.url || '未命名'}</p>
         <p className="text-xs text-gray-500 truncate">{bookmark.url}</p>
         {bookmark.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
