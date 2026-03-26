@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Menu, X, Settings, LogOut, Bookmark, ChevronLeft, Plus } from 'lucide-react';
+import { Menu, X, Settings, LogOut, Bookmark, ChevronLeft, Plus, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { SearchBar } from '../components/SearchBar';
@@ -17,6 +17,7 @@ export function Home() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [toast, setToast] = useState<{show: boolean; message: string; type: 'success' | 'error'}>({show: false, message: '', type: 'success'});
   const [_sessions, setSessions] = useState<any[]>([]);
 
   useEffect(() => {
@@ -78,6 +79,14 @@ export function Home() {
   const handleLogout = () => {
     logout();
     window.location.href = '/login';
+  };
+
+  // Toast helper
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({show: true, message, type});
+    setTimeout(() => {
+      setToast(prev => ({...prev, show: false}));
+    }, 3000);
   };
 
   return (
@@ -196,7 +205,23 @@ export function Home() {
       <BookmarkDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
 
       {/* Quick Add Bookmark Modal */}
-      <QuickAddBookmark isOpen={showQuickAdd} onClose={() => setShowQuickAdd(false)} />
+      <QuickAddBookmark 
+        isOpen={showQuickAdd} 
+        onClose={() => setShowQuickAdd(false)}
+        onSuccess={() => showToast('书签添加成功！')}
+      />
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] animate-slideInUp pointer-events-none">
+          <div className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg ${
+            toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+          }`}>
+            {toast.type === 'success' ? <CheckCircle size={18} /> : <X size={18} />}
+            <span className="text-sm font-medium">{toast.message}</span>
+          </div>
+        </div>
+      )}
 
       {/* Settings Modal */}
       {showSettings && user?.isAdmin && (
