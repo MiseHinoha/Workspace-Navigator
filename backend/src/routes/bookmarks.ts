@@ -244,9 +244,9 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     const newBookmark = db.prepare('SELECT * FROM bookmarks WHERE id = ?').get(id) as BookmarkRow;
     res.status(201).json({
       ...newBookmark,
-      tags: tags || [],
-      is_frequent: !!is_frequent,
-      frequent_order: frequentOrder
+      tags: JSON.parse(newBookmark.tags || '[]'),
+      is_frequent: !!newBookmark.is_frequent,
+      frequent_order: newBookmark.frequent_order
     });
   } catch (error) {
     console.error('Create bookmark error:', error);
