@@ -199,8 +199,9 @@ export function BookmarksPage() {
         )}
 
         {/* Search and Filter */}
-        <div className="mb-6 flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
+        <div className="mb-6 space-y-4">
+          {/* Search Input - Fixed Width */}
+          <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
@@ -211,9 +212,10 @@ export function BookmarksPage() {
             />
           </div>
           
+          {/* Tags - Below Search */}
           {tags.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
-              <Filter size={16} className="text-gray-400" />
+              <Filter size={16} className="text-gray-400 flex-shrink-0" />
               <button
                 onClick={() => setSelectedTag(null)}
                 className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
