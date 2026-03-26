@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Tag, X, Link2, Loader2 } from 'lucide-react';
+import { Plus, Tag, X, Link2, Loader2, CheckCircle } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark } from '../types';
 import { DraggableBookmark } from './DraggableBookmark';
@@ -25,6 +25,8 @@ export function BookmarkManager() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState<BookmarkFormData>({ title: '', url: '', description: '', icon: '', tags: '' });
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const filteredBookmarks = useMemo(() => {
     return bookmarks.filter((bookmark) => {
@@ -94,6 +96,8 @@ export function BookmarkManager() {
       });
       setFormData({ title: '', url: '', description: '', icon: '', tags: '' });
       setIsCreating(false);
+      setSuccessMessage('书签添加成功！');
+      setShowSuccess(true);
     }
   };
 
@@ -131,6 +135,22 @@ export function BookmarkManager() {
 
   return (
     <div className="h-full flex flex-col">
+      {/* Success Toast */}
+      {showSuccess && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 animate-slideInUp">
+          <div className="flex items-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg shadow-lg">
+            <CheckCircle size={18} />
+            <span className="text-sm font-medium">{successMessage}</span>
+            <button
+              onClick={() => setShowSuccess(false)}
+              className="ml-2 p-0.5 hover:bg-green-700 rounded"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">书签管理</h2>

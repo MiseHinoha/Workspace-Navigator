@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 const app = express();
 const PORT = 3001;
@@ -195,8 +197,128 @@ app.get('/api/bookmarks/tags', (req, res) => {
   res.json(Array.from(tags));
 });
 
-app.post('/api/bookmarks', (req, res) => {
-  const { is_frequent } = req.body;
+app.post('/api/bookmarks', async (req, res) => {
+  console.log('\n=== MOCK: CREATE BOOKMARK REQUEST ===');
+  console.log('Received body:', JSON.stringify(req.body, null, 2));
+  
+  let { title, url, description, icon, tags, is_frequent } = req.body;
+  
+  // Ensure URL has protocol
+  if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
+  }
+  
+  console.log('After normalization:');
+  console.log('  URL:', url);
+  console.log('  Title before fetch:', title);
+  console.log('  Icon before fetch:', icon);
+  
+  // Auto-fetch metadata if title or icon is empty
+  const needsTitle = !title || title.trim() === '';
+  const needsIcon = !icon || icon.trim() === '';
+  
+  if (needsTitle || needsIcon) {
+    console.log('Need to fetch metadata:', { needsTitle, needsIcon });
+    try {
+      console.log('Fetching:', url);
+      const response = await axios.get(url, {
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        },
+        maxRedirects: 10,
+      });
+      
+      const $ = cheerio.load(response.data, { decodeEntities: true });
+      
+      // Extract title
+      if (needsTitle) {
+        const titleText = $('title').first().text().trim();
+        const ogTitle = $('meta[property="og:title"]').attr('content');
+        const twitterTitle = $('meta[name="twitter:title"]').attr('content');
+        
+        title = titleText || ogTitle || twitterTitle || '';
+        console.log('Title extraction:');
+        console.log('  <title>:', titleText);
+        console.log('  og:title:', ogTitle);
+        console.log('  twitter:title:', twitterTitle);
+        console.log('  Final:', title);
+      }
+      
+      // Extract icon
+      if (needsIcon) {
+        const iconSelectors = [
+          'link[rel="apple-touch-icon"][sizes="180x180"]',
+          'link[rel="apple-touch-icon"][sizes="152x152"]',
+          'link[rel="apple-touch-icon"][sizes="144x144"]',
+          'link[rel="apple-touch-icon"][sizes="120x120"]',
+          'link[rel="apple-touch-icon"][sizes="72x72"]',
+          'link[rel="apple-touch-icon"]',
+          'link[rel="icon"][type="image/png"]',
+          'link[rel="icon"][sizes="32x32"]',
+          'link[rel="icon"][sizes="16x16"]',
+          'link[rel="shortcut icon"]',
+          'link[rel="icon"]',
+        ];
+        
+        for (const selector of iconSelectors) {
+          const href = $(selector).attr('href');
+          if (href) {
+            icon = href;
+            console.log('Icon found:', icon);
+            break;
+          }
+        }
+        
+        // Convert relative icon URL to absolute
+        if (icon && !icon.startsWith('http')) {
+          try {
+            const urlObj = new URL(url);
+            if (icon.startsWith('/')) {
+              icon = `${urlObj.protocol}//${urlObj.host}${icon}`;
+            } else {
+              icon = `${urlObj.protocol}//${urlObj.host}/${icon}`;
+            }
+            console.log('Icon converted to absolute:', icon);
+          } catch (e) {
+            console.log('Failed to convert icon URL');
+          }
+        }
+        
+        // Fallback to Google favicon
+        if (!icon) {
+          const urlObj = new URL(url);
+          icon = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`;
+          console.log('Using Google favicon:', icon);
+        }
+      }
+      
+      // Extract description
+      if (!description) {
+        description = $('meta[name="description"]').attr('content') || 
+                     $('meta[property="og:description"]').attr('content') ||
+                     '';
+        console.log('Description:', description);
+      }
+      
+    } catch (error) {
+      console.log('Failed to fetch metadata:', (error as Error).message);
+    }
+    
+    // Set fallback values
+    if (!title) {
+      try {
+        const urlObj = new URL(url);
+        title = urlObj.hostname.replace(/^www\./, '');
+      } catch {
+        title = url;
+      }
+      console.log('Using fallback title:', title);
+    }
+  }
+  
   let frequentOrder = 0;
   if (is_frequent) {
     frequentOrder = mockData.bookmarks.filter(b => b.is_frequent).length + 1;
@@ -205,12 +327,23 @@ app.post('/api/bookmarks', (req, res) => {
   const newBookmark = {
     id: `bm-${Date.now()}`,
     user_id: 'mock-user-1',
-    ...req.body,
+    title,
+    url,
+    description: description || '',
+    icon: icon || '',
+    tags: tags || [],
     is_frequent: is_frequent ? 1 : 0,
     frequent_order: frequentOrder,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
+  
+  console.log('=== FINAL BOOKMARK ===');
+  console.log('Title:', newBookmark.title);
+  console.log('URL:', newBookmark.url);
+  console.log('Icon:', newBookmark.icon);
+  console.log('======================\n');
+  
   mockData.bookmarks.push(newBookmark);
   res.status(201).json(newBookmark);
 });
