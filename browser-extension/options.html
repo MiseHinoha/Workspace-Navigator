@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workspace Navigator 设置</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #10b981;
+      --error: #ef4444;
+      --bg: #f5f5f5;
+      --card: #ffffff;
+      --text: #1f2937;
+      --text-secondary: #6b7280;
+      --border: #e5e7eb;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .header img {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .header p {
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .card h2 {
+      font-size: 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-group .hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border);
+    }
+
+    .btn-full {
+      width: 100%;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status.loading {
+      background: #eff6ff;
+      color: #1e40af;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 24px 0;
+    }
+
+    .steps {
+      counter-reset: step;
+    }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .step-content h4 {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .step-content p {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="icons/icon128.png" alt="Logo">
+      <h1>Workspace Navigator</h1>
+      <p>快速添加书签插件设置</p>
+    </div>
+
+    <!-- 服务器配置 -->
+    <div class="card">
+      <h2>🔌 服务器配置</h2>
+      
+      <div class="form-group">
+        <label for="server-url">导航页地址</label>
+        <input type="url" id="server-url" placeholder="http://localhost:3000">
+        <p class="hint">你的 Workspace Navigator 部署地址</p>
+      </div>
+
+      <div class="form-group">
+        <label for="token">访问令牌 (Token)</label>
+        <input type="text" id="token" placeholder="粘贴你的 JWT Token">
+        <p class="hint">从导航页获取，详见下方说明</p>
+      </div>
+
+      <button id="btn-save" class="btn btn-primary btn-full">保存设置</button>
+      <button id="btn-test" class="btn btn-secondary btn-full" style="margin-top: 10px;">测试连接</button>
+
+      <div id="status" class="status hidden"></div>
+    </div>
+
+    <!-- 快速登录 -->
+    <div class="card">
+      <h2>🔑 快速登录</h2>
+      <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">
+        或者直接使用账号密码登录获取 Token
+      </p>
+
+      <div class="form-group">
+        <label for="username">用户名</label>
+        <input type="text" id="username" placeholder="admin">
+      </div>
+
+      <div class="form-group">
+        <label for="password">密码</label>
+        <input type="password" id="password" placeholder="admin123">
+      </div>
+
+      <button id="btn-login" class="btn btn-primary btn-full">登录</button>
+    </div>
+
+    <!-- 使用说明 -->
+    <div class="card">
+      <h2>📖 如何获取 Token</h2>
+      
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>打开导航页</h4>
+            <p>访问你的 Workspace Navigator 并登录</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>打开开发者工具</h4>
+            <p>按 <code>F12</code> 或 <code>Ctrl+Shift+I</code></p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>找到 Token</h4>
+            <p>切换到 Application/存储 → Local Storage → 复制 <code>token</code> 的值</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h4>粘贴保存</h4>
+            <p>将 Token 粘贴到上方输入框并保存</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <p style="font-size: 13px; color: var(--text-secondary);">
+        💡 <strong>提示：</strong>Token 相当于你的登录凭证，请勿分享给他人。
+      </p>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
