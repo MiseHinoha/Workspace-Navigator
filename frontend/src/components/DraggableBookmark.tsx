@@ -28,16 +28,40 @@ export function DraggableBookmark({ bookmark, onEdit, onDelete }: DraggableBookm
       {/* Icon */}
       <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-gray-50 rounded-lg overflow-hidden">
         {bookmark.icon ? (
-          <img src={bookmark.icon} alt="" className="w-5 h-5 object-contain" />
+          <img 
+            src={bookmark.icon} 
+            alt="" 
+            className="w-5 h-5 object-contain"
+            onError={(e) => {
+              // Fallback to Google favicon or emoji
+              const target = e.target as HTMLImageElement;
+              const urlObj = new URL(bookmark.url);
+              target.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
+              target.onerror = () => {
+                // If Google favicon also fails, show emoji
+                target.style.display = 'none';
+                target.parentElement!.innerHTML = '<span class="text-lg">🔗</span>';
+              };
+            }}
+          />
         ) : (
-          <div className="text-lg">🔗</div>
+          <img 
+            src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`}
+            alt=""
+            className="w-5 h-5 object-contain"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              target.parentElement!.innerHTML = '<span class="text-lg">🔗</span>';
+            }}
+          />
         )}
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="font-medium text-gray-900 truncate">{bookmark.title}</p>
+          <p className="font-medium text-gray-900 truncate">{bookmark.title || bookmark.url || '未命名'}</p>
           <a
             href={bookmark.url}
             target="_blank"
@@ -49,7 +73,7 @@ export function DraggableBookmark({ bookmark, onEdit, onDelete }: DraggableBookm
           </a>
         </div>
         <p className="text-xs text-gray-500 truncate">{bookmark.url}</p>
-        {bookmark.tags.length > 0 && (
+        {Array.isArray(bookmark.tags) && bookmark.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
             {bookmark.tags.map((tag) => (
               <span

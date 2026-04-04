@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 import db from '../models/database';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
+import { BookmarkRow } from '../types';
 
 const router = Router();
 
@@ -34,6 +37,82 @@ router.get('/', authMiddleware, (req: AuthenticatedRequest, res) => {
     res.json(parsedBookmarks);
   } catch (error) {
     res.status(500).json({ error: 'Failed to get bookmarks' });
+  }
+});
+
+// Fetch website metadata (title, icon) from URL
+router.get('/fetch-metadata', authMiddleware, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { url } = req.query;
+    
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+
+    // Ensure URL has protocol
+    let targetUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      targetUrl = 'https://' + url;
+    }
+
+    try {
+      const response = await axios.get(targetUrl, {
+        timeout: 10000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        },
+        maxRedirects: 5
+      });
+
+      const $ = cheerio.load(response.data);
+      
+      // Get title
+      const title = $('title').text().trim() || 
+                    $('meta[property="og:title"]').attr('content') || 
+                    $('meta[name="twitter:title"]').attr('content') || 
+                    '';
+      
+      // Get icon
+      let icon = $('link[rel="icon"]').attr('href') || 
+                 $('link[rel="shortcut icon"]').attr('href') || 
+                 $('link[rel="apple-touch-icon"]').attr('href') ||
+                 $('meta[property="og:image"]').attr('content') ||
+                 '';
+      
+      // Convert relative icon URL to absolute
+      if (icon && !icon.startsWith('http')) {
+        const urlObj = new URL(targetUrl);
+        if (icon.startsWith('/')) {
+          icon = `${urlObj.protocol}//${urlObj.host}${icon}`;
+        } else {
+          icon = `${urlObj.protocol}//${urlObj.host}/${icon}`;
+        }
+      }
+      
+      // Get description
+      const description = $('meta[name="description"]').attr('content') || 
+                         $('meta[property="og:description"]').attr('content') || 
+                         '';
+
+      res.json({
+        title: title || new URL(targetUrl).hostname,
+        icon: icon || '',
+        description: description || '',
+        url: targetUrl
+      });
+    } catch (fetchError) {
+      // If fetching fails, return basic info from URL
+      const urlObj = new URL(targetUrl);
+      res.json({
+        title: urlObj.hostname,
+        icon: `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`,
+        description: '',
+        url: targetUrl
+      });
+    }
+  } catch (error) {
+    console.error('Fetch metadata error:', error);
+    res.status(500).json({ error: 'Failed to fetch metadata' });
   }
 });
 
@@ -74,12 +153,134 @@ router.get('/frequent', authMiddleware, (req: AuthenticatedRequest, res) => {
 });
 
 // Create bookmark
-router.post('/', authMiddleware, (req: AuthenticatedRequest, res) => {
+router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
-    const { title, url, description, icon, tags, is_frequent } = req.body;
+    let { title, url, description, icon, tags, is_frequent } = req.body;
     
-    if (!title || !url) {
-      return res.status(400).json({ error: 'Title and URL are required' });
+    console.log('=== CREATE BOOKMARK REQUEST ===');
+    console.log('Received:', { title, url, description, icon, tags });
+    
+    if (!url) {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+
+    // Ensure URL has protocol
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    
+    console.log('Normalized URL:', url);
+    console.log('Title before fetch:', title);
+    console.log('Icon before fetch:', icon);
+
+    // Auto-fetch metadata if title or icon is empty
+    if (!title || !icon) {
+      try {
+        console.log('Fetching metadata for:', url);
+        
+        // Fetch website HTML
+        const response = await axios.get(url, {
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+          },
+          maxRedirects: 10,
+        });
+        
+        const html = response.data;
+        const $ = cheerio.load(html);
+        
+        // Extract title
+        if (!title) {
+          const titleText = $('title').first().text().trim();
+          const ogTitle = $('meta[property="og:title"]').attr('content');
+          const twitterTitle = $('meta[name="twitter:title"]').attr('content');
+          
+          title = titleText || ogTitle || twitterTitle || '';
+          
+          console.log('Raw title extracted:', { titleText, ogTitle, twitterTitle, final: title });
+          
+          // Clean up title (remove site name suffix)
+          if (title) {
+            try {
+              const urlObj = new URL(url);
+              const hostname = urlObj.hostname.replace(/^www\./, '');
+              title = title.replace(new RegExp(`\\s*[-|]\\s*${hostname.replace(/\./g, '\\.')}\\s*$`, 'i'), '').trim();
+            } catch {
+              // Keep original title
+            }
+          }
+          
+          console.log('Final title for', url, ':', title);
+        }
+        
+        // Extract icon
+        if (!icon) {
+          // Try different icon selectors
+          const iconSelectors = [
+            'link[rel="apple-touch-icon"][sizes="180x180"]',
+            'link[rel="apple-touch-icon"][sizes="152x152"]',
+            'link[rel="apple-touch-icon"][sizes="144x144"]',
+            'link[rel="apple-touch-icon"][sizes="120x120"]',
+            'link[rel="apple-touch-icon"][sizes="114x114"]',
+            'link[rel="apple-touch-icon"][sizes="72x72"]',
+            'link[rel="apple-touch-icon"]',
+            'link[rel="icon"][type="image/png"]',
+            'link[rel="icon"][sizes="32x32"]',
+            'link[rel="icon"][sizes="16x16"]',
+            'link[rel="shortcut icon"]',
+            'link[rel="icon"]',
+            'meta[property="og:image"]',
+            'meta[name="twitter:image"]'
+          ];
+          
+          for (const selector of iconSelectors) {
+            const href = $(selector).attr('href') || $(selector).attr('content');
+            if (href) {
+              icon = href;
+              break;
+            }
+          }
+          
+          // Convert relative icon URL to absolute
+          if (icon && !icon.startsWith('http')) {
+            try {
+              const urlObj = new URL(url);
+              if (icon.startsWith('/')) {
+                icon = `${urlObj.protocol}//${urlObj.host}${icon}`;
+              } else if (icon.startsWith('./')) {
+                icon = `${urlObj.protocol}//${urlObj.host}${icon.slice(1)}`;
+              } else {
+                icon = `${urlObj.protocol}//${urlObj.host}/${icon}`;
+              }
+            } catch {
+              // Invalid URL, keep original
+            }
+          }
+        }
+        
+        // Extract description
+        if (!description) {
+          description = $('meta[name="description"]').attr('content') || 
+                       $('meta[property="og:description"]').attr('content') || 
+                       $('meta[name="twitter:description"]').attr('content') ||
+                       '';
+        }
+      } catch (fetchError) {
+        console.log('Failed to fetch metadata for:', url, fetchError);
+        // Use fallback values on error
+      }
+      
+      // Always set fallback values if still empty
+      const urlObj = new URL(url);
+      if (!title) {
+        title = urlObj.hostname.replace(/^www\./, '');
+      }
+      if (!icon) {
+        icon = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`;
+      }
     }
 
     const id = uuidv4();
@@ -94,16 +295,54 @@ router.post('/', authMiddleware, (req: AuthenticatedRequest, res) => {
       frequentOrder = (result.max_order || 0) + 1;
     }
 
+    // Debug log
+    console.log('=== BEFORE DB INSERT ===');
+    console.log('Final title:', title);
+    console.log('Final icon:', icon);
+    console.log('Final description:', description);
+
     const stmt = db.prepare(
       'INSERT INTO bookmarks (id, user_id, title, url, description, icon, tags, is_frequent, frequent_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    stmt.run(id, userId, title, url, description || null, icon || null, tagsJson, is_frequent ? 1 : 0, frequentOrder);
+    stmt.run(id, userId, title || url, url, description || null, icon || null, tagsJson, is_frequent ? 1 : 0, frequentOrder);
 
-    const newBookmark = db.prepare('SELECT * FROM bookmarks WHERE id = ?').get(id);
-    res.status(201).json({
-      ...newBookmark,
-      tags: tags || []
-    });
+    const newBookmark = db.prepare('SELECT * FROM bookmarks WHERE id = ?').get(id) as BookmarkRow;
+    
+    console.log('=== FROM DATABASE ===');
+    console.log('DB title:', newBookmark.title);
+    console.log('DB icon:', newBookmark.icon);
+    console.log('DB url:', newBookmark.url);
+    
+    // Parse tags safely
+    let parsedTags: string[] = [];
+    try {
+      parsedTags = JSON.parse(newBookmark.tags || '[]');
+      if (!Array.isArray(parsedTags)) {
+        parsedTags = [];
+      }
+    } catch (e) {
+      parsedTags = [];
+    }
+    
+    const responseData = {
+      id: newBookmark.id,
+      user_id: newBookmark.user_id,
+      title: newBookmark.title,
+      url: newBookmark.url,
+      description: newBookmark.description,
+      icon: newBookmark.icon,
+      tags: parsedTags,
+      is_frequent: !!newBookmark.is_frequent,
+      frequent_order: newBookmark.frequent_order || 0,
+      created_at: newBookmark.created_at,
+      updated_at: newBookmark.updated_at
+    };
+    
+    console.log('=== RESPONSE ===');
+    console.log('Response title:', responseData.title);
+    console.log('==================');
+    
+    res.status(201).json(responseData);
   } catch (error) {
     console.error('Create bookmark error:', error);
     res.status(500).json({ error: 'Failed to create bookmark' });
@@ -143,7 +382,7 @@ router.put('/:id', authMiddleware, (req: AuthenticatedRequest, res) => {
       id
     );
 
-    const updated = db.prepare('SELECT * FROM bookmarks WHERE id = ?').get(id);
+    const updated = db.prepare('SELECT * FROM bookmarks WHERE id = ?').get(id) as BookmarkRow;
     res.json({
       ...updated,
       tags: JSON.parse(updated.tags || '[]')
