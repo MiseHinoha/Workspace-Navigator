@@ -70,7 +70,8 @@ export const bookmarkApi = {
   getAll: (tag?: string) => api.get('/bookmarks', { params: { tag } }),
   getTags: () => api.get('/bookmarks/tags'),
   getFrequent: () => api.get('/bookmarks/frequent'),
-  create: (data: { title: string; url: string; description?: string; icon?: string; tags: string[]; is_frequent?: boolean }) =>
+  fetchMetadata: (url: string) => api.get('/bookmarks/fetch-metadata', { params: { url } }),
+  create: (data: { title?: string; url: string; description?: string; icon?: string; tags: string[]; is_frequent?: boolean }) =>
     api.post('/bookmarks', data),
   update: (id: string, data: Partial<{ title: string; url: string; description?: string; icon?: string; tags: string[]; is_frequent?: boolean; frequent_order?: number }>) =>
     api.put(`/bookmarks/${id}`, data),

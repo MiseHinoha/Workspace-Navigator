@@ -89,11 +89,34 @@ export function FrequentBookmarksBar() {
                 className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 bg-white hover:bg-blue-100 hover:text-blue-700 rounded-lg border border-gray-200 hover:border-blue-300 transition-all group"
               >
                 {bookmark.icon ? (
-                  <img src={bookmark.icon} alt="" className="w-4 h-4 object-contain" />
+                  <img 
+                    src={bookmark.icon} 
+                    alt="" 
+                    className="w-4 h-4 object-contain"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      try {
+                        const urlObj = new URL(bookmark.url);
+                        target.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
+                      } catch {
+                        target.style.display = 'none';
+                        target.parentElement!.innerHTML = '<span class="text-xs">🔗</span>';
+                      }
+                    }}
+                  />
                 ) : (
-                  <span className="text-xs">🔗</span>
+                  <img 
+                    src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`}
+                    alt=""
+                    className="w-4 h-4 object-contain"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.parentElement!.innerHTML = '<span class="text-xs">🔗</span>';
+                    }}
+                  />
                 )}
-                <span className="max-w-[120px] truncate">{bookmark.title}</span>
+                <span className="max-w-[120px] truncate">{bookmark.title || bookmark.url || '未命名'}</span>
               </a>
             ))}
           </div>
@@ -154,7 +177,7 @@ export function FrequentBookmarksBar() {
                           onChange={(e) => handleToggleFrequent(bookmark.id, e.target.checked)}
                           className="w-4 h-4 text-blue-600 rounded border-gray-300"
                         />
-                        <span className="text-sm text-gray-700 truncate flex-1">{bookmark.title}</span>
+                        <span className="text-sm text-gray-700 truncate flex-1">{bookmark.title || bookmark.url || '未命名'}</span>
                       </label>
                     ))
                   ) : (
@@ -173,11 +196,34 @@ export function FrequentBookmarksBar() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           {bookmark.icon ? (
-                            <img src={bookmark.icon} alt="" className="w-4 h-4 object-contain" />
+                            <img 
+                              src={bookmark.icon} 
+                              alt="" 
+                              className="w-4 h-4 object-contain"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                try {
+                                  const urlObj = new URL(bookmark.url);
+                                  target.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
+                                } catch {
+                                  target.style.display = 'none';
+                                  target.parentElement!.innerHTML = '<span class="text-xs">🔗</span>';
+                                }
+                              }}
+                            />
                           ) : (
-                            <span>🔗</span>
+                            <img 
+                              src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`}
+                              alt=""
+                              className="w-4 h-4 object-contain"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.parentElement!.innerHTML = '<span class="text-xs">🔗</span>';
+                              }}
+                            />
                           )}
-                          <span className="text-sm text-gray-700 truncate">{bookmark.title}</span>
+                          <span className="text-sm text-gray-700 truncate">{bookmark.title || bookmark.url || '未命名'}</span>
                         </a>
                       </div>
                     ))

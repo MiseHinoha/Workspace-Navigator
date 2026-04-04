@@ -13,7 +13,8 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
-  const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Use ref to store onClose to avoid dependency issues
   const onCloseRef = useRef(onClose);
@@ -73,12 +74,14 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
 
   const filteredBookmarks = useMemo(() => {
     return bookmarks.filter((bookmark) => {
-      const matchesTag = !selectedTag || bookmark.tags.includes(selectedTag);
+      const matchesTag = !selectedTag || (bookmark.tags && bookmark.tags.includes(selectedTag));
       const query = searchQuery.toLowerCase();
+      const title = bookmark.title || '';
+      const url = bookmark.url || '';
       const matchesSearch = !searchQuery || 
-        bookmark.title.toLowerCase().includes(query) ||
-        bookmark.url.toLowerCase().includes(query) ||
-        bookmark.tags.some(tag => tag.toLowerCase().includes(query));
+        title.toLowerCase().includes(query) ||
+        url.toLowerCase().includes(query) ||
+        (bookmark.tags && bookmark.tags.some(tag => tag && tag.toLowerCase().includes(query)));
       return matchesTag && matchesSearch;
     });
   }, [bookmarks, selectedTag, searchQuery]);
@@ -86,7 +89,8 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
   const groupedBookmarks = useMemo(() => {
     const groups: Record<string, BookmarkType[]> = {};
     filteredBookmarks.forEach(bookmark => {
-      const firstChar = bookmark.title.charAt(0).toUpperCase();
+      const title = bookmark.title || bookmark.url || '未命名';
+      const firstChar = title.charAt(0).toUpperCase();
       const key = /^[A-Z]/.test(firstChar) ? firstChar : '#';
       if (!groups[key]) groups[key] = [];
       groups[key].push(bookmark);
@@ -103,7 +107,7 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
       {/* Backdrop - click to close, hide immediately when closing */}
       {!isClosing && (
         <div 
-          className="fixed inset-0 bg-black/20 z-40 animate-fadeIn"
+          className={`fixed inset-0 bg-black/20 z-40 animate-fadeIn transition-all ${isDragging ? 'pointer-events-none' : ''}`}
           onClick={handleClose}
         />
       )}
@@ -186,7 +190,12 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
             searchQuery ? (
               <div className="space-y-2">
                 {filteredBookmarks.map((bookmark) => (
-                  <DraggableBookmarkItem key={bookmark.id} bookmark={bookmark} />
+                  <DraggableBookmarkItem 
+                    key={bookmark.id} 
+                    bookmark={bookmark} 
+                    onDragStart={() => setIsDragging(true)}
+                    onDragEnd={() => setIsDragging(false)}
+                  />
                 ))}
               </div>
             ) : (
@@ -195,7 +204,12 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
                   <h3 className="text-xs font-semibold text-gray-400 uppercase px-2 mb-2">{letter}</h3>
                   <div className="space-y-2">
                     {items.map((bookmark) => (
-                      <DraggableBookmarkItem key={bookmark.id} bookmark={bookmark} />
+                      <DraggableBookmarkItem 
+                        key={bookmark.id} 
+                        bookmark={bookmark}
+                        onDragStart={() => setIsDragging(true)}
+                        onDragEnd={() => setIsDragging(false)}
+                      />
                     ))}
                   </div>
                 </div>
@@ -213,7 +227,7 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
   );
 }
 
-function DraggableBookmarkItem({ bookmark }: { bookmark: BookmarkType }) {
+function DraggableBookmarkItem({ bookmark, onDragStart: onDragStartProp, onDragEnd: onDragEndProp }: { bookmark: BookmarkType; onDragStart?: () => void; onDragEnd?: () => void }) {
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     console.log('Native drag start:', bookmark);
     
@@ -223,12 +237,16 @@ function DraggableBookmarkItem({ bookmark }: { bookmark: BookmarkType }) {
     e.dataTransfer.setData('text/plain', data); // Fallback
     e.dataTransfer.effectAllowed = 'copy';
     
+    // Notify parent that dragging has started
+    onDragStartProp?.();
+    
     // Set a drag image if desired (optional)
     // e.dataTransfer.setDragImage(element, 0, 0);
   };
 
-  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragEnd = (_e: React.DragEvent<HTMLDivElement>) => {
     console.log('Native drag end');
+    onDragEndProp?.();
   };
 
   return (
@@ -242,14 +260,36 @@ function DraggableBookmarkItem({ bookmark }: { bookmark: BookmarkType }) {
       
       <div className="w-8 h-8 flex items-center justify-center bg-gray-50 rounded flex-shrink-0 overflow-hidden">
         {bookmark.icon ? (
-          <img src={bookmark.icon} alt="" className="w-5 h-5 object-contain" />
+          <img 
+            src={bookmark.icon} 
+            alt="" 
+            className="w-5 h-5 object-contain"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              const urlObj = new URL(bookmark.url);
+              target.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
+              target.onerror = () => {
+                target.style.display = 'none';
+                target.parentElement!.innerHTML = '<span class="text-sm">🔗</span>';
+              };
+            }}
+          />
         ) : (
-          <span className="text-sm">🔗</span>
+          <img 
+            src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`}
+            alt=""
+            className="w-5 h-5 object-contain"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              target.parentElement!.innerHTML = '<span class="text-sm">🔗</span>';
+            }}
+          />
         )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">{bookmark.title}</p>
+        <p className="text-sm font-medium text-gray-900 truncate">{bookmark.title || bookmark.url || '未命名'}</p>
         <p className="text-xs text-gray-500 truncate">{bookmark.url}</p>
         {bookmark.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">

@@ -40,6 +40,34 @@ html {
   overflow: hidden;
 }
 
+/* Auto-scrolling title - pure CSS solution */
+.auto-scroll-title {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+  position: relative;
+}
+
+.auto-scroll-title-content {
+  display: inline-block;
+  white-space: nowrap;
+  position: relative;
+}
+
+/* When content is wider than container, scroll on hover */
+.auto-scroll-title:hover .auto-scroll-title-content {
+  animation: autoScrollTitle 4s ease-in-out infinite alternate;
+}
+
+@keyframes autoScrollTitle {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(min(0px, calc(100% - var(--container-width, 100%))));
+  }
+}
+
 /* Animation */
 @keyframes fadeIn {
   from {
@@ -67,6 +95,17 @@ html {
   }
   to {
     transform: translateX(100%);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

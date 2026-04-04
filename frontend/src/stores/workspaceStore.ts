@@ -21,7 +21,7 @@ interface WorkspaceState {
   createWorkspace: (data: { name: string; description?: string; icon?: string }) => Promise<void>;
   updateWorkspace: (id: string, data: Partial<Workspace>) => Promise<void>;
   deleteWorkspace: (id: string) => Promise<void>;
-  createBookmark: (data: { title: string; url: string; description?: string; icon?: string; tags: string[]; is_frequent?: boolean }) => Promise<void>;
+  createBookmark: (data: { title?: string; url: string; description?: string; icon?: string; tags: string[]; is_frequent?: boolean }) => Promise<void>;
   updateBookmark: (id: string, data: Partial<Bookmark>) => Promise<void>;
   deleteBookmark: (id: string) => Promise<void>;
   toggleFrequent: (id: string, isFrequent: boolean) => Promise<void>;
@@ -39,7 +39,16 @@ interface WorkspaceState {
 // Helper to extract unique tags from bookmarks
 const extractTags = (bookmarks: Bookmark[]): string[] => {
   const tagSet = new Set<string>();
-  bookmarks.forEach(b => b.tags.forEach(t => tagSet.add(t)));
+  bookmarks.forEach(b => {
+    // 确保 tags 是数组
+    if (b && Array.isArray(b.tags)) {
+      b.tags.forEach(t => {
+        if (typeof t === 'string' && t.trim()) {
+          tagSet.add(t.trim());
+        }
+      });
+    }
+  });
   return Array.from(tagSet).sort();
 };
 
@@ -114,11 +123,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const newBookmark: Bookmark = {
       id: tempId,
       user_id: 'current-user',
-      title: data.title,
+      title: data.title || data.url,
       url: data.url,
       description: data.description || '',
       icon: data.icon || '',
-      tags: data.tags,
+      tags: data.tags || [],
       is_frequent: data.is_frequent || false,
       frequent_order: data.is_frequent ? frequentBookmarks.length + 1 : 0,
       created_at: new Date().toISOString(),
@@ -136,17 +145,27 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     
     try {
       // Send API request
-      const { data: createdBookmark } = await bookmarkApi.create(data);
+      const response = await bookmarkApi.create(data);
+      const createdBookmark = response.data;
+      
+      // Ensure created bookmark has correct format
+      const normalizedBookmark: Bookmark = {
+        ...createdBookmark,
+        tags: Array.isArray(createdBookmark.tags) ? createdBookmark.tags : [],
+        is_frequent: !!createdBookmark.is_frequent,
+        frequent_order: createdBookmark.frequent_order || 0
+      };
       
       // Replace temp bookmark with real one
+      const updatedBookmarks = get().bookmarks.map(b => b.id === tempId ? normalizedBookmark : b);
       set({ 
-        bookmarks: get().bookmarks.map(b => b.id === tempId ? createdBookmark : b),
-        tags: extractTags(get().bookmarks.map(b => b.id === tempId ? createdBookmark : b))
+        bookmarks: updatedBookmarks,
+        tags: extractTags(updatedBookmarks)
       });
       
       if (data.is_frequent) {
         set({ 
-          frequentBookmarks: get().frequentBookmarks.map(b => b.id === tempId ? createdBookmark : b)
+          frequentBookmarks: get().frequentBookmarks.map(b => b.id === tempId ? normalizedBookmark : b)
         });
       }
     } catch (error) {
@@ -163,7 +182,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   updateBookmark: async (id, data) => {
-    const { bookmarks, frequentBookmarks } = get();
+    const { bookmarks, frequentBookmarks, pinnedCards } = get();
     const bookmark = bookmarks.find(b => b.id === id);
     if (!bookmark) return;
     
@@ -181,6 +200,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           : frequentBookmarks.map(b => b.id === id ? updatedBookmark : b)
       });
     }
+    
+    // Sync pinned cards that reference this bookmark
+    const updatedPinnedCards: Record<string, PinnedCard[]> = {};
+    Object.entries(pinnedCards).forEach(([key, cards]) => {
+      updatedPinnedCards[key] = cards.map(card => {
+        if (card.bookmark_id === id) {
+          return {
+            ...card,
+            title: data.title ?? card.title,
+            url: data.url ?? card.url,
+            description: data.description !== undefined ? data.description : card.description,
+            icon: data.icon !== undefined ? data.icon : card.icon,
+            tags: data.tags ?? card.tags,
+          };
+        }
+        return card;
+      });
+    });
+    set({ pinnedCards: updatedPinnedCards });
     
     try {
       await bookmarkApi.update(id, data);
@@ -286,7 +324,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       workspace_id: workspaceId,
       bookmark_id: bookmarkId,
       user_id: 'current-user',
-      group_id: groupId || null,
+      group_id: groupId || undefined,
       sort_order: cards.length + 1,
       title: bookmark.title,
       url: bookmark.url,
@@ -320,7 +358,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   unpinCard: async (workspaceId, cardId) => {
-    const { pinnedCards, activeGroupId } = get();
+    const { activeGroupId } = get();
     const key = `${workspaceId}-${activeGroupId || 'null'}`;
     
     // Optimistic update

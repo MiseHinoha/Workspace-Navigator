@@ -76,3 +76,29 @@ export interface JWTPayload {
   username: string;
   isAdmin: boolean;
 }
+
+// Database row types (raw data from SQLite)
+export interface BookmarkRow {
+  id: string;
+  user_id: string;
+  title: string;
+  url: string;
+  description?: string;
+  icon?: string;
+  tags: string;
+  is_frequent: number;
+  frequent_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SessionRow {
+  id: string;
+  user_id: string;
+  device_name?: string;
+  device_info?: string;
+  tabs: string;
+  active_workspace_id?: string;
+  last_active: string;
+  created_at: string;
+}
