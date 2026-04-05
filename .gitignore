@@ -6,6 +6,8 @@ node_modules/
 dist/
 build/
 */dist/
+!browser-extensions/dist/*.xpi
+!browser-extensions/dist/*.crx
 
 # Environment variables
 .env
