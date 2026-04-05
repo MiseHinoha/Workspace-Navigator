@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>添加到 Workspace Navigator</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 头部 -->
+    <header class="header">
+      <img src="icons/icon32.png" alt="Logo" class="logo">
+      <h1 class="title">添加书签</h1>
+    </header>
+
+    <!-- 加载状态 -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <span>加载中...</span>
+    </div>
+
+    <!-- 未配置状态 -->
+    <div id="not-configured" class="message-box hidden">
+      <div class="message-icon">⚙️</div>
+      <h3>需要配置</h3>
+      <p>请先设置导航页地址和登录 Token</p>
+      <button id="btn-open-options" class="btn btn-primary">打开设置</button>
+    </div>
+
+    <!-- 添加表单 -->
+    <div id="add-form" class="form-container hidden">
+      <!-- 页面信息预览 -->
+      <div class="page-preview">
+        <img id="favicon" src="icons/icon16.png" alt="Favicon" class="favicon">
+        <div class="page-info">
+          <input type="text" id="title" class="input title-input" placeholder="页面标题">
+          <input type="text" id="url" class="input url-input" readonly>
+        </div>
+      </div>
+
+      <!-- 描述 -->
+      <div class="form-group">
+        <label for="description">描述</label>
+        <textarea id="description" class="textarea" rows="2" placeholder="添加描述（可选）"></textarea>
+      </div>
+
+      <!-- 标签 -->
+      <div class="form-group">
+        <label for="tags">
+          标签
+          <span class="label-hint">用逗号分隔</span>
+        </label>
+        <input type="text" id="tags" class="input" placeholder="工具, 文档, 常用">
+        <!-- 推荐标签 -->
+        <div id="suggested-tags" class="suggested-tags"></div>
+      </div>
+
+      <!-- 工作空间 -->
+      <div class="form-group">
+        <label for="workspace">工作空间</label>
+        <select id="workspace" class="select">
+          <option value="">-- 仅保存到书签 --</option>
+        </select>
+      </div>
+
+      <!-- 固定选项 -->
+      <div class="form-group checkbox-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="pin-card" class="checkbox">
+          <span class="checkmark"></span>
+          <span class="checkbox-text">同时固定到工作空间</span>
+        </label>
+      </div>
+
+      <!-- 常用选项 -->
+      <div class="form-group checkbox-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="is-frequent" class="checkbox">
+          <span class="checkmark"></span>
+          <span class="checkbox-text">添加到常用书签</span>
+        </label>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="actions">
+        <button id="btn-save" class="btn btn-primary btn-full">
+          <span class="btn-text">保存书签</span>
+          <span class="btn-loading hidden">保存中...</span>
+        </button>
+      </div>
+
+      <!-- 快捷链接 -->
+      <div class="quick-links">
+        <a href="#" id="link-open-navigator" class="link">打开导航页</a>
+        <a href="#" id="link-settings" class="link">设置</a>
+      </div>
+    </div>
+
+    <!-- 结果提示 -->
+    <div id="result" class="result hidden">
+      <div class="result-icon" id="result-icon">✓</div>
+      <div class="result-message" id="result-message">保存成功！</div>
+    </div>
+
+    <!-- 错误提示 -->
+    <div id="error" class="error hidden">
+      <div class="error-icon">⚠️</div>
+      <div class="error-message" id="error-message"></div>
+      <button id="btn-retry" class="btn btn-secondary">重试</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

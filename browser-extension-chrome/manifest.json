@@ -1,0 +1,61 @@
+{
+  "manifest_version": 3,
+  "name": "Workspace Navigator - 快速添加",
+  "version": "1.0.0",
+  "description": "快速将当前页面添加到 Workspace Navigator 导航页",
+  "author": "Workspace Navigator",
+  "homepage_url": "https://github.com/MiseHinoha/Workspace-Navigator",
+  
+  "permissions": [
+    "activeTab",
+    "storage",
+    "contextMenus"
+  ],
+  
+  "host_permissions": [
+    "http://*/",
+    "https://*/"
+  ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "添加到 Workspace Navigator",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  
+  "options_page": "options.html",
+  
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "打开 Workspace Navigator 添加窗口"
+    }
+  }
+}
