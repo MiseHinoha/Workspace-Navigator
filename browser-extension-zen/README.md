@@ -135,6 +135,10 @@ const DEFAULT_CONFIG = {
 }
 ```
 
+## 作者
+
+YipTszkwan
+
 ## 许可证
 
 MIT License - 与 Workspace Navigator 主项目一致
