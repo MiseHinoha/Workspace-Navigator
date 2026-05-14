@@ -10,6 +10,8 @@ interface WorkspaceFormData {
   icon: string;
 }
 
+const WORKSPACE_ICONS = ['📁', '💼', '🚀', '📊', '🧠', '⚙️', '🧩', '📝', '📚', '🛠️', '🎯', '💡'];
+
 export function WorkspaceSelector() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -175,14 +177,29 @@ export function WorkspaceSelector() {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">图标</label>
-                <input
-                  type="text"
-                  value={formData.icon}
-                  onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  placeholder="例如: 💼 🚀 📊"
-                />
-                <p className="text-xs text-gray-500 mt-1">可以使用 Emoji 作为图标</p>
+                <div className="grid grid-cols-6 gap-2">
+                  {WORKSPACE_ICONS.map((icon) => (
+                    <button
+                      key={icon}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, icon })}
+                      className={`h-10 rounded-lg border text-xl transition-colors ${
+                        formData.icon === icon
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {icon}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, icon: '' })}
+                  className="mt-2 text-xs text-gray-500 hover:text-gray-700"
+                >
+                  使用默认图标（📁）
+                </button>
               </div>
               
               <div>

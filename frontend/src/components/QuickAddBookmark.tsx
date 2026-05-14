@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Link2, Loader2, Globe, FileText } from 'lucide-react';
+import { AxiosError } from 'axios';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { TagInput } from './TagInput';
 
@@ -8,6 +9,17 @@ interface QuickAddBookmarkProps {
   onClose: () => void;
   onSuccess?: () => void;
 }
+
+const normalizeBookmarkUrl = (rawUrl: string): string => {
+  try {
+    const parsed = new URL(rawUrl);
+    const hostname = parsed.hostname.toLowerCase().replace(/^www\./, '');
+    const pathname = parsed.pathname.replace(/\/+$/, '');
+    return `${hostname}${pathname}`;
+  } catch {
+    return rawUrl.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '');
+  }
+};
 
 export function QuickAddBookmark({ isOpen, onClose, onSuccess }: QuickAddBookmarkProps) {
   const { createBookmark, bookmarks, tags: availableTags } = useWorkspaceStore();
@@ -40,11 +52,7 @@ export function QuickAddBookmark({ isOpen, onClose, onSuccess }: QuickAddBookmar
     }
 
     // Check for duplicate URL
-    const existingBookmark = bookmarks.find(b => {
-      const bookmarkUrl = b.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-      const inputUrl = normalizedUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-      return bookmarkUrl === inputUrl;
-    });
+    const existingBookmark = bookmarks.find((b) => normalizeBookmarkUrl(b.url) === normalizeBookmarkUrl(normalizedUrl));
 
     if (existingBookmark) {
       setError(`该网站已存在于书签中：${existingBookmark.title || existingBookmark.url}`);
@@ -72,7 +80,13 @@ export function QuickAddBookmark({ isOpen, onClose, onSuccess }: QuickAddBookmar
       onSuccess?.();
       onClose();
     } catch (err) {
-      setError('添加书签失败，请重试');
+      const axiosError = err as AxiosError<{ error?: string; bookmark?: { title?: string; url?: string } }>;
+      if (axiosError.response?.status === 409) {
+        const existing = axiosError.response.data?.bookmark;
+        setError(`该书签已存在：${existing?.title || existing?.url || '请勿重复添加'}`);
+      } else {
+        setError('添加书签失败，请重试');
+      }
       console.error('Failed to create bookmark:', err);
     } finally {
       setIsLoading(false);
