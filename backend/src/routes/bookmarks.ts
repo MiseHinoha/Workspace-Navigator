@@ -8,6 +8,17 @@ import { BookmarkRow } from '../types';
 
 const router = Router();
 
+function normalizeBookmarkUrl(rawUrl: string): string {
+  try {
+    const parsed = new URL(rawUrl);
+    const hostname = parsed.hostname.toLowerCase().replace(/^www\./, '');
+    const pathname = parsed.pathname.replace(/\/+$/, '');
+    return `${hostname}${pathname}`;
+  } catch {
+    return rawUrl.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '');
+  }
+}
+
 // Get all bookmarks for current user
 router.get('/', authMiddleware, (req: AuthenticatedRequest, res) => {
   try {
@@ -168,6 +179,18 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://' + url;
     }
+
+    const userId = req.user!.userId;
+    const normalizedInputUrl = normalizeBookmarkUrl(url);
+    const existingStmt = db.prepare('SELECT id, title, url FROM bookmarks WHERE user_id = ?');
+    const existingBookmarks = existingStmt.all(userId) as { id: string; title: string; url: string }[];
+    const duplicate = existingBookmarks.find((bookmark) => normalizeBookmarkUrl(bookmark.url) === normalizedInputUrl);
+    if (duplicate) {
+      return res.status(409).json({
+        error: 'Bookmark already exists',
+        bookmark: duplicate,
+      });
+    }
     
     console.log('Normalized URL:', url);
     console.log('Title before fetch:', title);
@@ -284,7 +307,6 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     }
 
     const id = uuidv4();
-    const userId = req.user!.userId;
     const tagsJson = JSON.stringify(tags || []);
 
     // Get max frequent_order if marking as frequent

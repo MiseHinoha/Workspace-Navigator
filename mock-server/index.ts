@@ -4,10 +4,21 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 const app = express();
-const PORT = 3001;
+const PORT = Number(process.env.PORT || 3001);
 
 app.use(cors());
 app.use(express.json());
+
+const normalizeBookmarkUrl = (rawUrl: string): string => {
+  try {
+    const parsed = new URL(rawUrl);
+    const hostname = parsed.hostname.toLowerCase().replace(/^www\./, '');
+    const pathname = parsed.pathname.replace(/\/+$/, '');
+    return `${hostname}${pathname}`;
+  } catch {
+    return rawUrl.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '');
+  }
+};
 
 const mockData = {
   user: {
@@ -206,6 +217,19 @@ app.post('/api/bookmarks', async (req, res) => {
   // Ensure URL has protocol
   if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
     url = 'https://' + url;
+  }
+
+  const normalizedInputUrl = normalizeBookmarkUrl(url || '');
+  const duplicate = mockData.bookmarks.find((bookmark) => normalizeBookmarkUrl(bookmark.url) === normalizedInputUrl);
+  if (duplicate) {
+    return res.status(409).json({
+      error: 'Bookmark already exists',
+      bookmark: {
+        id: duplicate.id,
+        title: duplicate.title,
+        url: duplicate.url,
+      },
+    });
   }
   
   console.log('After normalization:');

@@ -2,9 +2,14 @@ import { useState } from 'react';
 import { Search, ChevronDown } from 'lucide-react';
 import { SEARCH_ENGINES } from '../types';
 
+const DEFAULT_ENGINE_STORAGE_KEY = 'default_search_engine_name';
+
 export function SearchBar() {
   const [query, setQuery] = useState('');
-  const [selectedEngine, setSelectedEngine] = useState(SEARCH_ENGINES[0]);
+  const [selectedEngine, setSelectedEngine] = useState(() => {
+    const savedEngineName = localStorage.getItem(DEFAULT_ENGINE_STORAGE_KEY);
+    return SEARCH_ENGINES.find((engine) => engine.name === savedEngineName) || SEARCH_ENGINES[0];
+  });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -43,6 +48,7 @@ export function SearchBar() {
                     type="button"
                     onClick={() => {
                       setSelectedEngine(engine);
+                      localStorage.setItem(DEFAULT_ENGINE_STORAGE_KEY, engine.name);
                       setIsDropdownOpen(false);
                     }}
                     className={`w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
