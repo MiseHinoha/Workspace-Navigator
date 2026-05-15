@@ -114,27 +114,27 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
       
       {/* Drawer - stop propagation to prevent closing when clicking inside */}
       <div 
-        className="fixed right-0 top-0 h-full w-80 bg-white shadow-2xl z-50 flex flex-col"
+        className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 shadow-2xl z-50 flex flex-col"
         style={{ animation: isClosing ? 'slideOutRight 0.2s ease-in forwards' : 'slideInRight 0.2s ease-out forwards' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/60">
           <div className="flex items-center gap-2">
             <Bookmark size={20} className="text-blue-600" />
-            <h2 className="font-semibold text-gray-900">书签库</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100">书签库</h2>
             <span className="text-xs text-gray-400">({bookmarks.length})</span>
           </div>
           <button
             onClick={handleClose}
-            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Search */}
-        <div className="px-4 py-3 border-b border-gray-200">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
@@ -142,7 +142,7 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索书签标题或标签..."
-              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               autoFocus
             />
           </div>
@@ -150,7 +150,7 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
 
         {/* Tags Filter */}
         {tags.length > 0 && (
-          <div className="px-4 py-2 border-b border-gray-200 max-h-24 overflow-y-auto">
+          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 max-h-24 overflow-y-auto">
             <div className="flex flex-wrap gap-1.5">
               <button
                 onClick={() => setSelectedTag(null)}
@@ -219,7 +219,7 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
         </div>
 
         {/* Footer Hint */}
-        <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 text-center">
+        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700/60 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-300 text-center">
           💡 拖拽书签到左侧工作区域进行固定
         </div>
       </div>
@@ -254,11 +254,11 @@ function DraggableBookmarkItem({ bookmark, onDragStart: onDragStartProp, onDragE
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      className="group flex items-center gap-2 p-2.5 bg-white rounded-lg border border-gray-200 hover:border-blue-400 hover:shadow-md transition-all cursor-grab active:cursor-grabbing"
+      className="group flex items-center gap-2 p-2.5 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-400 hover:shadow-md transition-all cursor-grab active:cursor-grabbing"
     >
-      <GripVertical size={16} className="text-gray-300 flex-shrink-0" />
+      <GripVertical size={16} className="text-gray-300 dark:text-gray-500 flex-shrink-0" />
       
-      <div className="w-8 h-8 flex items-center justify-center bg-gray-50 rounded flex-shrink-0 overflow-hidden">
+      <div className="w-8 h-8 flex items-center justify-center bg-gray-50 dark:bg-gray-600 rounded flex-shrink-0 overflow-hidden">
         {bookmark.icon ? (
           <img 
             src={bookmark.icon} 
@@ -289,15 +289,15 @@ function DraggableBookmarkItem({ bookmark, onDragStart: onDragStartProp, onDragE
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">{bookmark.title || bookmark.url || '未命名'}</p>
-        <p className="text-xs text-gray-500 truncate">{bookmark.url}</p>
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{bookmark.title || bookmark.url || '未命名'}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{bookmark.url}</p>
         {bookmark.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
             {bookmark.tags.slice(0, 2).map(tag => (
-              <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">{tag}</span>
+              <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-300 rounded">{tag}</span>
             ))}
             {bookmark.tags.length > 2 && (
-              <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">+{bookmark.tags.length - 2}</span>
+              <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-300 rounded">+{bookmark.tags.length - 2}</span>
             )}
           </div>
         )}

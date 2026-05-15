@@ -85,14 +85,14 @@ export function TagInput({ value, onChange, availableTags, placeholder = "添加
         {value.map(tag => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 px-2 py-1 text-sm bg-blue-50 text-blue-600 rounded-full"
+            className="inline-flex items-center gap-1 px-2 py-1 text-sm bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 rounded-full"
           >
             {tag}
             <button
               type="button"
               onClick={() => removeTag(tag)}
               disabled={disabled}
-              className="p-0.5 hover:bg-blue-100 rounded-full transition-colors disabled:opacity-50"
+              className="p-0.5 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded-full transition-colors disabled:opacity-50"
             >
               <X size={12} />
             </button>
@@ -102,7 +102,7 @@ export function TagInput({ value, onChange, availableTags, placeholder = "添加
 
       {/* Input */}
       <div className="relative">
-        <Tag size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Tag size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
         <input
           ref={inputRef}
           type="text"
@@ -112,16 +112,16 @@ export function TagInput({ value, onChange, availableTags, placeholder = "添加
           onBlur={handleBlur}
           onFocus={() => setShowSuggestions(true)}
           disabled={disabled}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all disabled:opacity-50"
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all disabled:opacity-50"
           placeholder={value.length === 0 ? placeholder : '继续添加...'}
         />
       </div>
 
       {/* Suggestions Dropdown */}
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-40 overflow-y-auto">
           <div className="py-1">
-            <div className="px-3 py-1.5 text-xs text-gray-500 border-b border-gray-100">
+            <div className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
               点击选择已有标签
             </div>
             {suggestions.map(tag => (
@@ -129,10 +129,10 @@ export function TagInput({ value, onChange, availableTags, placeholder = "添加
                 key={tag}
                 type="button"
                 onClick={() => addTag(tag)}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-300 transition-colors"
               >
                 <span className="inline-flex items-center gap-2">
-                  <Tag size={14} className="text-gray-400" />
+                  <Tag size={14} className="text-gray-400 dark:text-gray-500" />
                   {tag}
                 </span>
               </button>
@@ -143,11 +143,11 @@ export function TagInput({ value, onChange, availableTags, placeholder = "添加
 
       {/* Hint for new tag */}
       {showSuggestions && inputValue.trim() && !suggestions.some(t => t.toLowerCase() === inputValue.toLowerCase()) && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg">
           <button
             type="button"
             onClick={() => addTag(inputValue)}
-            className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+            className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-300 transition-colors"
           >
             <span className="inline-flex items-center gap-2">
               <span className="text-blue-500 font-medium">+</span>

@@ -111,20 +111,20 @@ export function BookmarksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 sticky top-0 z-10">
         <div className="max-w-screen-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/')}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <ArrowLeft size={20} />
             </button>
             <div className="flex items-center gap-2">
               <span className="text-2xl">🔖</span>
-              <h1 className="font-semibold text-gray-900">书签管理</h1>
+              <h1 className="font-semibold text-gray-900 dark:text-gray-100">书签管理</h1>
             </div>
           </div>
 
@@ -142,7 +142,7 @@ export function BookmarksPage() {
         {/* Frequent Bookmarks Section */}
         {frequentBookmarks.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3 flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide mb-3 flex items-center gap-2">
               <Star size={16} className="text-yellow-500" />
               常用书签
             </h2>
@@ -153,7 +153,7 @@ export function BookmarksPage() {
                   href={bookmark.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all group"
+                  className="flex items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:shadow-sm transition-all group"
                 >
                   {bookmark.icon ? (
                     <img 
@@ -190,7 +190,7 @@ export function BookmarksPage() {
                       }}
                     />
                   )}
-                  <span className="text-sm font-medium text-gray-700 truncate flex-1">{bookmark.title || bookmark.url || '未命名'}</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate flex-1">{bookmark.title || bookmark.url || '未命名'}</span>
                   <ExternalLink size={14} className="text-gray-300 group-hover:text-gray-500 flex-shrink-0" />
                 </a>
               ))}
@@ -208,7 +208,7 @@ export function BookmarksPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索书签..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
           </div>
           
@@ -248,7 +248,7 @@ export function BookmarksPage() {
           {filteredBookmarks.map((bookmark) => (
             <div
               key={bookmark.id}
-              className="group bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all overflow-hidden flex flex-col h-[200px]"
+              className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:shadow-md transition-all overflow-hidden flex flex-col h-[200px]"
             >
               {/* Header */}
               <div className="p-4 pb-2">
@@ -295,9 +295,9 @@ export function BookmarksPage() {
                       {/* Auto-scroll title on hover */}
                       <AutoScrollTitle 
                         title={bookmark.title || bookmark.url || '未命名'} 
-                        className="font-semibold text-gray-900"
+                      className="font-semibold text-gray-900 dark:text-gray-100"
                       />
-                      <p className="text-xs text-gray-500 truncate">{
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{
                         (() => {
                           try {
                             return new URL(bookmark.url).hostname;
@@ -328,7 +328,7 @@ export function BookmarksPage() {
               {/* Middle Content - Flexible */}
               <div className="flex-1 px-4 py-2 overflow-hidden">
                 {bookmark.description && (
-                  <p className="text-sm text-gray-600 line-clamp-2 mb-2">{bookmark.description}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-2">{bookmark.description}</p>
                 )}
 
                 {bookmark.tags.length > 0 && (
@@ -336,7 +336,7 @@ export function BookmarksPage() {
                     {bookmark.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded"
+                        className="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded"
                       >
                         {tag}
                       </span>
@@ -346,7 +346,7 @@ export function BookmarksPage() {
               </div>
 
               {/* Fixed Footer */}
-              <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50 mt-auto">
+              <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/60 mt-auto">
                 <div className="flex items-center justify-between">
                   <a
                     href={bookmark.url}
@@ -398,20 +398,20 @@ export function BookmarksPage() {
       {/* Edit Modal */}
       {editingBookmark && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Link2 size={20} className="text-blue-600" />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">编辑书签</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">编辑书签</h2>
               </div>
               <button
                 onClick={() => {
                   setEditingBookmark(null);
                   setFormData({ title: '', url: '', description: '', icon: '', tags: [], is_frequent: false });
                 }}
-                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
                 <X size={20} />
               </button>
@@ -420,34 +420,34 @@ export function BookmarksPage() {
             <form onSubmit={handleUpdate} className="space-y-4">
               {/* URL - Read Only */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">网址</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">网址</label>
                 <input
                   type="text"
                   value={formData.url}
                   disabled
-                  className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-gray-500"
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-300"
                 />
               </div>
               
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">标题</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">标题</label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="书签标题"
                 />
               </div>
               
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">描述</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">描述</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
                   rows={2}
                   placeholder="书签描述（可选）"
                 />
@@ -455,7 +455,7 @@ export function BookmarksPage() {
 
               {/* Tags */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                   <Tag size={14} className="inline mr-1" />
                   标签
                 </label>
@@ -475,7 +475,7 @@ export function BookmarksPage() {
                   onChange={(e) => setFormData({ ...formData, is_frequent: e.target.checked })}
                   className="w-4 h-4 text-blue-600 rounded border-gray-300"
                 />
-                <span className="text-sm text-gray-700">设为常用书签（显示在顶部栏）</span>
+                <span className="text-sm text-gray-700 dark:text-gray-200">设为常用书签（显示在顶部栏）</span>
               </label>
               
               <div className="flex gap-3 pt-4">
@@ -485,7 +485,7 @@ export function BookmarksPage() {
                     setEditingBookmark(null);
                     setFormData({ title: '', url: '', description: '', icon: '', tags: [], is_frequent: false });
                   }}
-                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className="flex-1 px-4 py-2 text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
                 >
                   取消
                 </button>

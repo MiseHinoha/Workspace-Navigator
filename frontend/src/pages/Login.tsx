@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { UserPlus, LogIn, Loader2 } from 'lucide-react';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export function Login() {
   const navigate = useNavigate();
@@ -54,20 +55,23 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl shadow-lg mb-4">
             <span className="text-3xl">🚀</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Workspace Navigator</h1>
-          <p className="text-gray-600 mt-1">你的工作空间导航中心</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Workspace Navigator</h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-1">你的工作空间导航中心</p>
         </div>
 
         {/* Form Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">
             {isRegistering ? '创建账号' : '登录'}
           </h2>
 
@@ -79,14 +83,14 @@ export function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                 用户名
               </label>
               <input
                 type="text"
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 placeholder="输入用户名"
                 required
                 minLength={3}
@@ -94,14 +98,14 @@ export function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                 密码
               </label>
               <input
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 placeholder="输入密码"
                 required
                 minLength={6}
@@ -110,14 +114,14 @@ export function Login() {
 
             {isRegistering && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                   确认密码
                 </label>
                 <input
                   type="password"
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                   placeholder="再次输入密码"
                   required
                 />
@@ -164,8 +168,8 @@ export function Login() {
 
           {/* Demo hint - only show in development */}
           {import.meta.env.DEV && (
-            <div className="mt-6 p-3 bg-gray-50 rounded-lg text-center">
-              <p className="text-xs text-gray-500">默认管理员账号：admin / admin123</p>
+            <div className="mt-6 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-center">
+              <p className="text-xs text-gray-500 dark:text-gray-300">默认管理员账号：admin / admin123</p>
             </div>
           )}
         </div>
