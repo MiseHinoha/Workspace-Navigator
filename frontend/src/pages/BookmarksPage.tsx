@@ -215,13 +215,13 @@ export function BookmarksPage() {
           {/* Tags - Below Search */}
           {tags.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
-              <Filter size={16} className="text-gray-400 flex-shrink-0" />
+              <Filter size={16} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
               <button
                 onClick={() => setSelectedTag(null)}
                 className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
                   selectedTag === null
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
                 全部
@@ -233,7 +233,7 @@ export function BookmarksPage() {
                   className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
                     selectedTag === tag
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                 >
                   {tag}
