@@ -8,6 +8,7 @@ import { WorkspaceCanvas } from '../components/WorkspaceCanvas';
 import { FrequentBookmarksBar } from '../components/FrequentBookmarksBar';
 import { BookmarkDrawer } from '../components/BookmarkDrawer';
 import { QuickAddBookmark } from '../components/QuickAddBookmark';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { sessionApi } from '../utils/api';
 
 export function Home() {
@@ -90,9 +91,9 @@ export function Home() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Top Navigation */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
         {/* Main Header */}
         <div className="px-4 py-3">
           <div className="flex items-center justify-between max-w-screen-2xl mx-auto">
@@ -106,7 +107,7 @@ export function Home() {
               </button>
               <div className="flex items-center gap-2">
                 <span className="text-2xl">🚀</span>
-                <span className="font-semibold text-gray-900 hidden sm:inline">Workspace Navigator</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100 hidden sm:inline">Workspace Navigator</span>
               </div>
             </div>
 
@@ -120,7 +121,7 @@ export function Home() {
               {/* Quick Add Bookmark Button */}
               <button
                 onClick={() => setShowQuickAdd(true)}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 rounded-lg transition-colors"
                 title="快速添加书签"
               >
                 <Plus size={18} />
@@ -130,20 +131,22 @@ export function Home() {
               {/* Mobile Quick Add Button */}
               <button
                 onClick={() => setShowQuickAdd(true)}
-                className="sm:hidden p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                className="sm:hidden p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-900/40 rounded-lg transition-colors"
                 title="快速添加书签"
               >
                 <Plus size={20} />
               </button>
 
-              <div className="w-px h-6 bg-gray-200 mx-1" />
+              <div className="w-px h-6 bg-gray-200 dark:bg-gray-600 mx-1" />
 
-              <span className="text-sm text-gray-600 hidden sm:inline">{user?.username}</span>
+              <ThemeToggle />
+
+              <span className="text-sm text-gray-600 dark:text-gray-300 hidden sm:inline">{user?.username}</span>
               
               {user?.isAdmin && (
                 <button
                   onClick={() => setShowSettings(true)}
-                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   title="设置"
                 >
                   <Settings size={20} />
@@ -152,7 +155,7 @@ export function Home() {
               
               <button
                 onClick={handleLogout}
-                className="p-2 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
+                className="p-2 text-gray-600 hover:bg-red-50 hover:text-red-600 dark:text-gray-200 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                 title="退出登录"
               >
                 <LogOut size={20} />
@@ -165,7 +168,7 @@ export function Home() {
         <FrequentBookmarksBar />
 
         {/* Mobile Search */}
-        <div className="px-4 py-2 md:hidden border-t border-gray-100">
+        <div className="px-4 py-2 md:hidden border-t border-gray-100 dark:border-gray-700">
           <SearchBar />
         </div>
       </header>
@@ -174,7 +177,7 @@ export function Home() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Sidebar - Only Workspace Selector */}
         <aside
-          className={`bg-white border-r border-gray-200 transition-all duration-300 overflow-hidden flex flex-col ${
+          className={`bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700 transition-all duration-300 overflow-hidden flex flex-col ${
             isSidebarOpen ? 'w-64' : 'w-0'
           }`}
         >
@@ -192,7 +195,7 @@ export function Home() {
         {!isDrawerOpen && (
           <button
             onClick={() => setIsDrawerOpen(true)}
-            className="fixed right-0 top-1/2 -translate-y-1/2 z-50 flex items-center gap-1 px-3 py-3 bg-blue-600 text-white rounded-l-xl shadow-lg hover:bg-blue-700 transition-all hover:pr-4 group"
+            className="fixed right-0 top-1/2 -translate-y-1/2 z-50 flex items-center gap-1 px-3 py-3 bg-blue-600 text-white rounded-l-xl shadow-lg hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 transition-all hover:pr-4 group"
             title="打开书签库"
           >
             <Bookmark size={20} />
@@ -236,22 +239,22 @@ function AdminSettingsModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">管理员设置</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">管理员设置</h3>
           <button
             onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-gray-600 rounded"
+            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
           >
             <X size={20} />
           </button>
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/60 rounded-lg">
             <div>
-              <p className="font-medium text-gray-900">开放注册</p>
-              <p className="text-sm text-gray-500">允许新用户注册账号</p>
+              <p className="font-medium text-gray-900 dark:text-gray-100">开放注册</p>
+              <p className="text-sm text-gray-500 dark:text-gray-300">允许新用户注册账号</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -268,7 +271,7 @@ function AdminSettingsModal({ onClose }: { onClose: () => void }) {
         <div className="mt-6 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            className="px-4 py-2 text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
           >
             关闭
           </button>

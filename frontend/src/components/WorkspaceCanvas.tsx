@@ -226,14 +226,14 @@ export function WorkspaceCanvas() {
   return (
     <div className="h-full flex flex-col">
       {/* Groups Bar */}
-      <div className="bg-white border-b border-gray-200 px-4 py-2">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
         <div className="flex items-center gap-2 overflow-x-auto">
           <button
             onClick={() => setActiveGroup(null)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
               activeGroupId === null
-                ? 'bg-blue-100 text-blue-700'
-                : 'text-gray-600 hover:bg-gray-100'
+                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
             <FolderOpen size={16} />
@@ -246,8 +246,8 @@ export function WorkspaceCanvas() {
                 onClick={() => setActiveGroup(group.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-l-lg whitespace-nowrap transition-colors ${
                   activeGroupId === group.id
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 <Folder size={16} />
@@ -257,8 +257,8 @@ export function WorkspaceCanvas() {
                 onClick={() => handleDeleteGroup(group.id)}
                 className={`px-2 py-1.5 rounded-r-lg transition-colors ${
                   activeGroupId === group.id
-                    ? 'bg-blue-100 text-blue-700 hover:text-red-500'
-                    : 'text-gray-400 hover:text-red-500 hover:bg-gray-100'
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 hover:text-red-500'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 <X size={14} />
@@ -289,7 +289,7 @@ export function WorkspaceCanvas() {
           ) : (
             <button
               onClick={() => setShowNewGroup(true)}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-500 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
             >
               <Plus size={16} />
               新建分组
@@ -307,17 +307,17 @@ export function WorkspaceCanvas() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={`flex-1 overflow-auto transition-colors ${
-          isDraggingOver ? 'bg-blue-100' : 'bg-gray-50'
+          isDraggingOver ? 'bg-blue-100 dark:bg-blue-950/40' : 'bg-gray-50 dark:bg-gray-900'
         }`}
       >
         {/* Workspace Header */}
-        <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-4">
+        <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-800/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4">
           <div className="flex items-center gap-3">
             <span className="text-3xl">{activeWorkspace.icon || '📁'}</span>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">{activeWorkspace.name}</h1>
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{activeWorkspace.name}</h1>
               {activeWorkspace.description && (
-                <p className="text-sm text-gray-500">{activeWorkspace.description}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{activeWorkspace.description}</p>
               )}
             </div>
           </div>
@@ -402,10 +402,10 @@ function PinnedCardItem({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      className={`group relative bg-white rounded-xl shadow-sm border transition-all overflow-hidden cursor-grab active:cursor-grabbing ${
+      className={`group relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border transition-all overflow-hidden cursor-grab active:cursor-grabbing ${
         isDragging ? 'opacity-50 rotate-2' : ''
       } ${
-        isDragOver ? 'border-blue-500 ring-2 ring-blue-200 scale-105' : 'border-gray-200 hover:shadow-md hover:border-blue-300'
+        isDragOver ? 'border-blue-500 ring-2 ring-blue-200 scale-105' : 'border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-300'
       }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -417,7 +417,7 @@ function PinnedCardItem({
           e.stopPropagation();
           onRemove();
         }}
-        className={`absolute top-2 right-2 p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100 transition-opacity z-20 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute top-2 right-2 p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-opacity z-20 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
         title="移除卡片"
       >
         <X size={16} />
@@ -427,7 +427,7 @@ function PinnedCardItem({
       <div className="flex flex-col h-full">
         {/* Card Header */}
         <div className="flex items-start gap-3 p-4 pr-14 min-w-0">
-          <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+          <div className="w-12 h-12 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0">
             {card.icon ? (
               <img 
                 src={card.icon} 
@@ -454,9 +454,9 @@ function PinnedCardItem({
             {/* Auto-scroll title on hover */}
             <AutoScrollTitle 
               title={card.title || card.url || '未命名'} 
-              className="font-semibold text-gray-900"
+              className="font-semibold text-gray-900 dark:text-gray-100"
             />
-            <p className="text-xs text-gray-500 truncate">{
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{
               (() => {
                 try {
                   return new URL(card.url).hostname;
@@ -472,7 +472,7 @@ function PinnedCardItem({
         <div className="flex-1 px-4 pb-3 overflow-hidden">
           {/* Description */}
           {card.description && (
-            <p className="text-sm text-gray-600 line-clamp-2 mb-2">{card.description}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-2">{card.description}</p>
           )}
 
           {/* Tags */}
@@ -481,13 +481,13 @@ function PinnedCardItem({
               {card.tags.slice(0, 3).map((tag) => (
                 <span
                   key={tag}
-                  className="px-2 py-0.5 text-xs bg-blue-50 text-blue-600 rounded-full"
+                  className="px-2 py-0.5 text-xs bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 rounded-full"
                 >
                   {tag}
                 </span>
               ))}
               {card.tags.length > 3 && (
-                <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-500 rounded-full">
+                <span className="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 rounded-full">
                   +{card.tags.length - 3}
                 </span>
               )}
@@ -496,7 +496,7 @@ function PinnedCardItem({
         </div>
 
         {/* Fixed Footer */}
-        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50">
+        <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/60">
           <div className="flex items-center justify-between">
             <button
               onClick={(e) => {

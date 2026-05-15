@@ -47,14 +47,14 @@ export function FrequentBookmarksBar() {
 
   if (frequentBookmarks.length === 0) {
     return (
-      <div className="flex items-center justify-center py-2 px-4 bg-blue-50/50 border-b border-blue-100">
-        <span className="text-sm text-gray-400">暂无常用书签，在书签管理页面设置常用书签</span>
+      <div className="flex items-center justify-center py-2 px-4 bg-blue-50/50 dark:bg-gray-800 border-b border-blue-100 dark:border-gray-700">
+        <span className="text-sm text-gray-400 dark:text-gray-400">暂无常用书签，在书签管理页面设置常用书签</span>
       </div>
     );
   }
 
   return (
-    <div className="relative bg-blue-50/50 border-b border-blue-100">
+    <div className="relative bg-blue-50/50 dark:bg-gray-800 border-b border-blue-100 dark:border-gray-700">
       <div className="flex items-center px-2">
         {/* Label */}
         <div className="flex-shrink-0 flex items-center gap-1 px-3 py-2 text-sm font-medium text-blue-700">
@@ -86,7 +86,7 @@ export function FrequentBookmarksBar() {
                 href={bookmark.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 bg-white hover:bg-blue-100 hover:text-blue-700 rounded-lg border border-gray-200 hover:border-blue-300 transition-all group"
+                className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-gray-600 hover:text-blue-700 dark:hover:text-blue-300 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-300 transition-all group"
               >
                 {bookmark.icon ? (
                   <img 
@@ -150,10 +150,10 @@ export function FrequentBookmarksBar() {
                 onClick={handleCloseDropdown}
               />
               {/* Dropdown - positioned below with higher z-index */}
-              <div className="absolute top-full right-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[70] py-2 max-h-80 overflow-y-auto">
-                <div className="px-3 py-2 border-b border-gray-100">
+              <div className="absolute top-full right-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 z-[70] py-2 max-h-80 overflow-y-auto">
+                <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">常用书签管理</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">常用书签管理</span>
                     <button
                       onClick={() => setIsEditing(!isEditing)}
                       className="text-xs text-blue-600 hover:text-blue-700"

@@ -64,8 +64,8 @@ export function WorkspaceSelector() {
           onClick={() => navigate('/')}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
             isHome
-              ? 'bg-blue-50 text-blue-700 border border-blue-200'
-              : 'text-gray-700 hover:bg-gray-100 border border-transparent'
+              ? 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800/60'
+              : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent'
           }`}
         >
           <FolderKanban size={20} />
@@ -76,8 +76,8 @@ export function WorkspaceSelector() {
           onClick={() => navigate('/bookmarks')}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
             isBookmarks
-              ? 'bg-blue-50 text-blue-700 border border-blue-200'
-              : 'text-gray-700 hover:bg-gray-100 border border-transparent'
+              ? 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800/60'
+              : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent'
           }`}
         >
           <Bookmark size={20} />
@@ -89,10 +89,10 @@ export function WorkspaceSelector() {
       {isHome && (
         <>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">我的工作空间</h2>
+            <h2 className="text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">我的工作空间</h2>
             <button
               onClick={() => setIsCreating(true)}
-              className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              className="p-1.5 text-gray-500 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
               title="新建工作空间"
             >
               <Plus size={18} />
@@ -104,8 +104,8 @@ export function WorkspaceSelector() {
               key={workspace.id}
               className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
                 activeWorkspaceId === workspace.id
-                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                  : 'text-gray-700 hover:bg-gray-100 border border-transparent'
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800/60'
+                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent'
               }`}
               onClick={() => setActiveWorkspace(workspace.id)}
             >
@@ -113,7 +113,7 @@ export function WorkspaceSelector() {
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{workspace.name}</p>
                 {workspace.description && (
-                  <p className="text-xs text-gray-500 truncate">{workspace.description}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{workspace.description}</p>
                 )}
               </div>
               
