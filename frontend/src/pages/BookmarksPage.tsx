@@ -23,9 +23,11 @@ export function BookmarksPage() {
   const navigate = useNavigate();
   const {
     bookmarks,
+    frequentBookmarks,
     tags,
     bookmarksHasMore,
     fetchBookmarksPage,
+    fetchFrequentBookmarks,
     fetchTags,
     updateBookmark,
     deleteBookmark,
@@ -70,6 +72,7 @@ export function BookmarksPage() {
 
   useEffect(() => {
     fetchTags();
+    fetchFrequentBookmarks();
   }, []);
 
   useEffect(() => {
@@ -111,10 +114,6 @@ export function BookmarksPage() {
       return matchesTag && matchesSearch;
     });
   }, [bookmarks, selectedTag, searchQuery]);
-
-  const frequentBookmarks = useMemo(() => {
-    return bookmarks.filter(b => b.is_frequent);
-  }, [bookmarks]);
 
   // Auto-fetch metadata when URL changes (for edit mode)
   useEffect(() => {
