@@ -6,6 +6,7 @@ import { Bookmark } from '../types';
 import { QuickAddBookmark } from '../components/QuickAddBookmark';
 import { TagInput } from '../components/TagInput';
 import { AutoScrollTitle } from '../components/AutoScrollTitle';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 interface BookmarkFormData {
   title: string;
@@ -35,31 +36,56 @@ export function BookmarksPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
+  const isFetchingRef = useRef(false);
   const [formData, setFormData] = useState<BookmarkFormData>({ 
     title: '', url: '', description: '', icon: '', tags: [], is_frequent: false 
   });
+  const loadBookmarksPage = async (reset: boolean) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
+    if (reset) {
+      setIsInitialLoading(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+
+    try {
+      await fetchBookmarksPage({
+        reset,
+        limit: BOOKMARKS_PAGE_SIZE,
+        tag: selectedTag || undefined,
+      });
+    } finally {
+      if (reset) {
+        setIsInitialLoading(false);
+      } else {
+        setIsLoadingMore(false);
+      }
+      isFetchingRef.current = false;
+    }
+  };
+
   useEffect(() => {
-    fetchBookmarksPage({ reset: true, limit: BOOKMARKS_PAGE_SIZE });
     fetchTags();
   }, []);
 
   useEffect(() => {
-    fetchBookmarksPage({ reset: true, limit: BOOKMARKS_PAGE_SIZE, tag: selectedTag || undefined });
+    loadBookmarksPage(true);
   }, [selectedTag]);
 
   useEffect(() => {
     if (!loadMoreTriggerRef.current) return;
-    if (searchQuery || !bookmarksHasMore) return;
+    if (searchQuery || !bookmarksHasMore || isInitialLoading) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
-        if (!entry?.isIntersecting || isLoadingMore) return;
+        if (!entry?.isIntersecting || isLoadingMore || isFetchingRef.current) return;
 
-        setIsLoadingMore(true);
-        fetchBookmarksPage({ limit: BOOKMARKS_PAGE_SIZE, tag: selectedTag || undefined })
-          .finally(() => setIsLoadingMore(false));
+        loadBookmarksPage(false);
       },
       {
         root: null,
@@ -70,7 +96,7 @@ export function BookmarksPage() {
 
     observer.observe(loadMoreTriggerRef.current);
     return () => observer.disconnect();
-  }, [bookmarksHasMore, searchQuery, isLoadingMore, selectedTag, fetchBookmarksPage]);
+  }, [bookmarksHasMore, searchQuery, isLoadingMore, isInitialLoading, selectedTag]);
 
   const filteredBookmarks = useMemo(() => {
     return bookmarks.filter((bookmark) => {
@@ -168,14 +194,16 @@ export function BookmarksPage() {
               <h1 className="font-semibold text-gray-900 dark:text-gray-100">书签管理</h1>
             </div>
           </div>
-
-          <button
-            onClick={() => setIsCreating(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={18} />
-            添加书签
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={() => setIsCreating(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={18} />
+              添加书签
+            </button>
+          </div>
         </div>
       </header>
 
@@ -419,7 +447,7 @@ export function BookmarksPage() {
           ))}
         </div>
 
-        {!searchQuery && (
+        {!searchQuery && !isInitialLoading && (
           <div ref={loadMoreTriggerRef} className="mt-6 flex justify-center">
             {isLoadingMore && (
               <span className="px-4 py-2 text-sm text-gray-500 dark:text-gray-300">加载中...</span>
@@ -427,7 +455,9 @@ export function BookmarksPage() {
           </div>
         )}
 
-        {filteredBookmarks.length === 0 && (
+        {isInitialLoading ? (
+          <div className="text-center py-16 text-sm text-gray-500 dark:text-gray-300">加载中...</div>
+        ) : filteredBookmarks.length === 0 && (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">🔖</div>
             <p className="text-lg text-gray-600">没有找到书签</p>
