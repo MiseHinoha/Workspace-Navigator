@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Edit2, Trash2, Search, Star, StarOff, ExternalLink, Tag, Filter, X, Link2 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
@@ -35,6 +35,7 @@ export function BookmarksPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
   const [formData, setFormData] = useState<BookmarkFormData>({ 
     title: '', url: '', description: '', icon: '', tags: [], is_frequent: false 
   });
@@ -46,6 +47,30 @@ export function BookmarksPage() {
   useEffect(() => {
     fetchBookmarksPage({ reset: true, limit: BOOKMARKS_PAGE_SIZE, tag: selectedTag || undefined });
   }, [selectedTag]);
+
+  useEffect(() => {
+    if (!loadMoreTriggerRef.current) return;
+    if (searchQuery || !bookmarksHasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting || isLoadingMore) return;
+
+        setIsLoadingMore(true);
+        fetchBookmarksPage({ limit: BOOKMARKS_PAGE_SIZE, tag: selectedTag || undefined })
+          .finally(() => setIsLoadingMore(false));
+      },
+      {
+        root: null,
+        rootMargin: '0px 0px 200px 0px',
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(loadMoreTriggerRef.current);
+    return () => observer.disconnect();
+  }, [bookmarksHasMore, searchQuery, isLoadingMore, selectedTag, fetchBookmarksPage]);
 
   const filteredBookmarks = useMemo(() => {
     return bookmarks.filter((bookmark) => {
@@ -394,21 +419,11 @@ export function BookmarksPage() {
           ))}
         </div>
 
-        {bookmarksHasMore && !searchQuery && (
-          <div className="mt-6 flex justify-center">
-            <button
-              onClick={async () => {
-                setIsLoadingMore(true);
-                try {
-                  await fetchBookmarksPage({ limit: BOOKMARKS_PAGE_SIZE, tag: selectedTag || undefined });
-                } finally {
-                  setIsLoadingMore(false);
-                }
-              }}
-              className="px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              {isLoadingMore ? '加载中...' : '加载更多'}
-            </button>
+        {!searchQuery && (
+          <div ref={loadMoreTriggerRef} className="mt-6 flex justify-center">
+            {isLoadingMore && (
+              <span className="px-4 py-2 text-sm text-gray-500 dark:text-gray-300">加载中...</span>
+            )}
           </div>
         )}
 

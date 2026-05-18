@@ -9,7 +9,7 @@ interface BookmarkDrawerProps {
   onClose: () => void;
 }
 
-const BOOKMARK_DRAWER_PAGE_SIZE = 30;
+const BOOKMARK_DRAWER_PAGE_SIZE = 15;
 
 export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
   const { tags, fetchTags } = useWorkspaceStore();
@@ -30,6 +30,7 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
 
   // Track previous isOpen to detect open action
   const prevIsOpenRef = useRef(isOpen);
+  const hasLoadedOnOpenRef = useRef(false);
   
   const loadPage = async (reset: boolean, tag?: string | null) => {
     if (isLoadingMore) return;
@@ -60,16 +61,19 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
       setBookmarks([]);
       setOffset(0);
       setHasMore(true);
+      hasLoadedOnOpenRef.current = true;
       loadPage(true, selectedTag);
     } else if (!isOpen && wasOpen && isClosing) {
       // Drawer was closed by handleClose, wait for animation to finish then unmount
       const timer = setTimeout(() => setIsClosing(false), 200);
       return () => clearTimeout(timer);
+    } else if (!isOpen && wasOpen) {
+      hasLoadedOnOpenRef.current = false;
     }
   }, [isOpen, isClosing]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !hasLoadedOnOpenRef.current) return;
     setBookmarks([]);
     setOffset(0);
     setHasMore(true);
@@ -194,7 +198,7 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
                 className={`px-2 py-0.5 text-xs font-medium rounded-full transition-colors ${
                   selectedTag === null
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
                 全部
@@ -206,7 +210,7 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
                   className={`px-2 py-0.5 text-xs font-medium rounded-full transition-colors ${
                     selectedTag === tag
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                 >
                   {tag}
@@ -228,7 +232,11 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
             }
           }}
         >
-          {filteredBookmarks.length === 0 ? (
+          {isLoadingMore && bookmarks.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <p className="text-sm">加载中...</p>
+            </div>
+          ) : filteredBookmarks.length === 0 ? (
             <div className="text-center py-8 text-gray-400">
               <Bookmark size={40} className="mx-auto mb-2 opacity-50" />
               <p className="text-sm">没有找到书签</p>
