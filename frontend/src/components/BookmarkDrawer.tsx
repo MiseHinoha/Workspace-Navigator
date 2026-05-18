@@ -2,19 +2,27 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { X, Search, ExternalLink, GripVertical, Bookmark } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark as BookmarkType } from '../types';
+import { bookmarkApi } from '../utils/api';
 
 interface BookmarkDrawerProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+const BOOKMARK_DRAWER_PAGE_SIZE = 30;
+
 export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
-  const { bookmarks, tags, fetchBookmarks, fetchTags } = useWorkspaceStore();
+  const { tags, fetchTags } = useWorkspaceStore();
+  const [bookmarks, setBookmarks] = useState<BookmarkType[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   
   // Use ref to store onClose to avoid dependency issues
   const onCloseRef = useRef(onClose);
@@ -23,6 +31,24 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
   // Track previous isOpen to detect open action
   const prevIsOpenRef = useRef(isOpen);
   
+  const loadPage = async (reset: boolean, tag?: string | null) => {
+    if (isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const nextOffset = reset ? 0 : offset;
+      const { data } = await bookmarkApi.getPage({
+        limit: BOOKMARK_DRAWER_PAGE_SIZE,
+        offset: nextOffset,
+        tag: tag || undefined,
+      });
+      setBookmarks((prev) => (reset ? data.items : [...prev, ...data.items]));
+      setOffset(nextOffset + data.items.length);
+      setHasMore(data.has_more);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
     const wasOpen = prevIsOpenRef.current;
     prevIsOpenRef.current = isOpen;
@@ -30,14 +56,25 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
     if (isOpen && !wasOpen) {
       // Drawer is opening - reset isClosing
       setIsClosing(false);
-      fetchBookmarks();
       fetchTags();
+      setBookmarks([]);
+      setOffset(0);
+      setHasMore(true);
+      loadPage(true, selectedTag);
     } else if (!isOpen && wasOpen && isClosing) {
       // Drawer was closed by handleClose, wait for animation to finish then unmount
       const timer = setTimeout(() => setIsClosing(false), 200);
       return () => clearTimeout(timer);
     }
   }, [isOpen, isClosing]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setBookmarks([]);
+    setOffset(0);
+    setHasMore(true);
+    loadPage(true, selectedTag);
+  }, [selectedTag]);
 
   const handleClose = () => {
     if (closeTimerRef.current || isClosing) return; // Prevent double close
@@ -180,7 +217,17 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
         )}
 
         {/* Bookmark List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-4">
+        <div
+          ref={listRef}
+          className="flex-1 overflow-y-auto p-3 space-y-4"
+          onScroll={async () => {
+            if (!listRef.current || !hasMore || isLoadingMore) return;
+            const { scrollTop, scrollHeight, clientHeight } = listRef.current;
+            if (scrollTop + clientHeight >= scrollHeight - 80) {
+              await loadPage(false, selectedTag);
+            }
+          }}
+        >
           {filteredBookmarks.length === 0 ? (
             <div className="text-center py-8 text-gray-400">
               <Bookmark size={40} className="mx-auto mb-2 opacity-50" />
@@ -215,6 +262,9 @@ export function BookmarkDrawer({ isOpen, onClose }: BookmarkDrawerProps) {
                 </div>
               ))
             )
+          )}
+          {isLoadingMore && (
+            <div className="text-center py-2 text-xs text-gray-400">加载中...</div>
           )}
         </div>
 

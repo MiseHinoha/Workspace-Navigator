@@ -13,7 +13,17 @@ import { sessionApi } from '../utils/api';
 
 export function Home() {
   const { user, logout } = useAuthStore();
-  const { workspaces, fetchWorkspaces, fetchBookmarks, fetchTags, fetchFrequentBookmarks, activeWorkspaceId, setActiveWorkspace } = useWorkspaceStore();
+  const {
+    workspaces,
+    fetchWorkspaces,
+    fetchBookmarks,
+    fetchTags,
+    fetchFrequentBookmarks,
+    fetchPinnedCards,
+    fetchGroups,
+    activeWorkspaceId,
+    setActiveWorkspace,
+  } = useWorkspaceStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -40,6 +50,14 @@ export function Home() {
       setActiveWorkspace(workspaces[0].id);
     }
   }, [workspaces, activeWorkspaceId, setActiveWorkspace]);
+
+  useEffect(() => {
+    if (workspaces.length === 0) return;
+    workspaces.forEach((workspace) => {
+      fetchGroups(workspace.id);
+      fetchPinnedCards(workspace.id, null);
+    });
+  }, [workspaces, fetchGroups, fetchPinnedCards]);
 
   useEffect(() => {
     syncSession();
