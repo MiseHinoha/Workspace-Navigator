@@ -5,6 +5,9 @@ import { workspaceApi, bookmarkApi, groupApi } from '../utils/api';
 interface WorkspaceState {
   workspaces: Workspace[];
   bookmarks: Bookmark[];
+  bookmarksTotal: number;
+  bookmarksHasMore: boolean;
+  bookmarksOffset: number;
   frequentBookmarks: Bookmark[];
   tags: string[];
   groups: Record<string, Group[]>;
@@ -14,6 +17,7 @@ interface WorkspaceState {
   isLoading: boolean;
   fetchWorkspaces: () => Promise<void>;
   fetchBookmarks: () => Promise<void>;
+  fetchBookmarksPage: (options?: { reset?: boolean; limit?: number; tag?: string }) => Promise<void>;
   fetchFrequentBookmarks: () => Promise<void>;
   fetchTags: () => Promise<void>;
   fetchGroups: (workspaceId: string) => Promise<void>;
@@ -55,6 +59,9 @@ const extractTags = (bookmarks: Bookmark[]): string[] => {
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   workspaces: [],
   bookmarks: [],
+  bookmarksTotal: 0,
+  bookmarksHasMore: true,
+  bookmarksOffset: 0,
   frequentBookmarks: [],
   tags: [],
   groups: {},
@@ -70,7 +77,22 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   fetchBookmarks: async () => {
     const { data } = await bookmarkApi.getAll();
-    set({ bookmarks: data });
+    set({ bookmarks: data, bookmarksTotal: data.length, bookmarksHasMore: false, bookmarksOffset: data.length });
+  },
+
+  fetchBookmarksPage: async (options) => {
+    const limit = options?.limit ?? 50;
+    const reset = options?.reset ?? false;
+    const tag = options?.tag;
+    const offset = reset ? 0 : get().bookmarksOffset;
+
+    const { data } = await bookmarkApi.getPage({ limit, offset, tag });
+    set((state) => ({
+      bookmarks: reset ? data.items : [...state.bookmarks, ...data.items],
+      bookmarksTotal: data.total,
+      bookmarksHasMore: data.has_more,
+      bookmarksOffset: data.offset + data.items.length,
+    }));
   },
 
   fetchFrequentBookmarks: async () => {

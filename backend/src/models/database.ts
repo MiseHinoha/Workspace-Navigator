@@ -15,6 +15,17 @@ const db: Database.Database = new Database(DB_PATH);
 // Enable WAL mode for better concurrency
 db.pragma('journal_mode = WAL');
 
+function normalizeBookmarkUrl(rawUrl: string): string {
+  try {
+    const parsed = new URL(rawUrl);
+    const hostname = parsed.hostname.toLowerCase().replace(/^www\./, '');
+    const pathname = parsed.pathname.replace(/\/+$/, '');
+    return `${hostname}${pathname}`;
+  } catch {
+    return rawUrl.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '');
+  }
+}
+
 // Initialize tables
 export function initDatabase() {
   // Users table
@@ -59,6 +70,7 @@ export function initDatabase() {
       user_id TEXT NOT NULL,
       title TEXT NOT NULL,
       url TEXT NOT NULL,
+      normalized_url TEXT,
       description TEXT,
       icon TEXT,
       tags TEXT DEFAULT '[]',
@@ -69,6 +81,47 @@ export function initDatabase() {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `);
+
+  // Lightweight migration: add normalized_url for fast deduplication.
+  const bookmarkColumns = db.prepare('PRAGMA table_info(bookmarks)').all() as Array<{ name: string }>;
+  const hasNormalizedUrl = bookmarkColumns.some((column) => column.name === 'normalized_url');
+  if (!hasNormalizedUrl) {
+    db.exec('ALTER TABLE bookmarks ADD COLUMN normalized_url TEXT');
+  }
+
+  // Backfill normalized_url for legacy rows.
+  const rowsNeedingNormalization = db
+    .prepare('SELECT id, url FROM bookmarks WHERE normalized_url IS NULL OR normalized_url = \'\'')
+    .all() as Array<{ id: string; url: string }>;
+  const updateNormalizedUrlStmt = db.prepare('UPDATE bookmarks SET normalized_url = ? WHERE id = ?');
+  for (const row of rowsNeedingNormalization) {
+    updateNormalizedUrlStmt.run(normalizeBookmarkUrl(row.url), row.id);
+  }
+
+  // Indexes for hot paths.
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_user_normalized_url
+    ON bookmarks(user_id, normalized_url)
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_bookmarks_user_updated_at
+    ON bookmarks(user_id, updated_at DESC)
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_bookmarks_user_frequent
+    ON bookmarks(user_id, is_frequent, frequent_order)
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_pinned_cards_workspace_group_sort
+    ON pinned_cards(workspace_id, group_id, sort_order)
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_groups_workspace_sort
+    ON groups(workspace_id, sort_order)
+  `);
+
+  // Let SQLite auto-checkpoint WAL periodically (~1000 pages, default is often similar but we set explicitly).
+  db.pragma('wal_autocheckpoint = 1000');
 
   // Groups table (for organizing pinned cards in workspaces)
   db.exec(`
@@ -135,6 +188,14 @@ export function initDatabase() {
   insertDefaultSettings.run();
 
   console.log('Database initialized successfully');
+}
+
+export function runWalCheckpoint(mode: 'PASSIVE' | 'FULL' | 'RESTART' | 'TRUNCATE' = 'PASSIVE') {
+  try {
+    db.pragma(`wal_checkpoint(${mode})`);
+  } catch (error) {
+    console.warn(`WAL checkpoint (${mode}) failed:`, error);
+  }
 }
 
 export default db;

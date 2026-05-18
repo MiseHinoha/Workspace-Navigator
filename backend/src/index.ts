@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import { initDatabase } from './models/database';
+import { initDatabase, runWalCheckpoint } from './models/database';
 import authRoutes from './routes/auth';
 import workspaceRoutes from './routes/workspaces';
 import bookmarkRoutes from './routes/bookmarks';
@@ -18,6 +18,12 @@ app.use(express.json());
 
 // Initialize database
 initDatabase();
+runWalCheckpoint('TRUNCATE');
+
+// Periodic WAL maintenance to prevent long-lived WAL growth on busy instances.
+setInterval(() => {
+  runWalCheckpoint('PASSIVE');
+}, 10 * 60 * 1000);
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -34,9 +40,20 @@ app.get('/api/health', (req, res) => {
 // Serve static files in production
 if (NODE_ENV === 'production') {
   const staticPath = path.join(__dirname, '../public');
-  app.use(express.static(staticPath));
+  app.use(
+    express.static(staticPath, {
+      maxAge: '30d',
+      immutable: true,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
+      },
+    })
+  );
   
   app.get('*', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(path.join(staticPath, 'index.html'));
   });
 }

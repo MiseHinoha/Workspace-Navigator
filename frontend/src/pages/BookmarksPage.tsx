@@ -16,20 +16,36 @@ interface BookmarkFormData {
   is_frequent: boolean;
 }
 
+const BOOKMARKS_PAGE_SIZE = 15;
+
 export function BookmarksPage() {
   const navigate = useNavigate();
-  const { bookmarks, tags, fetchBookmarks, fetchTags, updateBookmark, deleteBookmark, toggleFrequent } = useWorkspaceStore();
+  const {
+    bookmarks,
+    tags,
+    bookmarksHasMore,
+    fetchBookmarksPage,
+    fetchTags,
+    updateBookmark,
+    deleteBookmark,
+    toggleFrequent,
+  } = useWorkspaceStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [formData, setFormData] = useState<BookmarkFormData>({ 
     title: '', url: '', description: '', icon: '', tags: [], is_frequent: false 
   });
   useEffect(() => {
-    fetchBookmarks();
+    fetchBookmarksPage({ reset: true, limit: BOOKMARKS_PAGE_SIZE });
     fetchTags();
   }, []);
+
+  useEffect(() => {
+    fetchBookmarksPage({ reset: true, limit: BOOKMARKS_PAGE_SIZE, tag: selectedTag || undefined });
+  }, [selectedTag]);
 
   const filteredBookmarks = useMemo(() => {
     return bookmarks.filter((bookmark) => {
@@ -377,6 +393,24 @@ export function BookmarksPage() {
             </div>
           ))}
         </div>
+
+        {bookmarksHasMore && !searchQuery && (
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={async () => {
+                setIsLoadingMore(true);
+                try {
+                  await fetchBookmarksPage({ limit: BOOKMARKS_PAGE_SIZE, tag: selectedTag || undefined });
+                } finally {
+                  setIsLoadingMore(false);
+                }
+              }}
+              className="px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              {isLoadingMore ? '加载中...' : '加载更多'}
+            </button>
+          </div>
+        )}
 
         {filteredBookmarks.length === 0 && (
           <div className="text-center py-16">
