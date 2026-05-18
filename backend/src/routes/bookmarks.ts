@@ -164,7 +164,11 @@ router.get('/', authMiddleware, (req: AuthenticatedRequest, res) => {
       const baseWhere = `
         FROM bookmarks
         WHERE user_id = ?
-        AND json_array_contains(tags, ?)
+        AND EXISTS (
+          SELECT 1
+          FROM json_each(bookmarks.tags)
+          WHERE json_each.value = ?
+        )
       `;
 
       if (hasPagination) {
