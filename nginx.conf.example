@@ -43,6 +43,19 @@ server {
         proxy_read_timeout 60s;
     }
 
+    # Cache static assets aggressively (hashed files are immutable)
+    location ~* \.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf)$ {
+        proxy_pass http://localhost:3000;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000, immutable";
+    }
+
+    # Never cache HTML entry
+    location = /index.html {
+        proxy_pass http://localhost:3000;
+        add_header Cache-Control "no-cache";
+    }
+
     # Logging
     access_log /var/log/nginx/workspace-navigator.access.log;
     error_log /var/log/nginx/workspace-navigator.error.log;

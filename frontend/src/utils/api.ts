@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import { Bookmark } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -66,8 +67,18 @@ export const workspaceApi = {
 };
 
 // Bookmark API
+export interface BookmarkPageResponse {
+  items: Bookmark[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
 export const bookmarkApi = {
   getAll: (tag?: string) => api.get('/bookmarks', { params: { tag } }),
+  getPage: (params?: { tag?: string; limit?: number; offset?: number }) =>
+    api.get<BookmarkPageResponse>('/bookmarks', { params }),
   getTags: () => api.get('/bookmarks/tags'),
   getFrequent: () => api.get('/bookmarks/frequent'),
   fetchMetadata: (url: string) => api.get('/bookmarks/fetch-metadata', { params: { url } }),
