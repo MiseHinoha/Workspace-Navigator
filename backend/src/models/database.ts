@@ -98,31 +98,6 @@ export function initDatabase() {
     updateNormalizedUrlStmt.run(normalizeBookmarkUrl(row.url), row.id);
   }
 
-  // Indexes for hot paths.
-  db.exec(`
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_user_normalized_url
-    ON bookmarks(user_id, normalized_url)
-  `);
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_bookmarks_user_updated_at
-    ON bookmarks(user_id, updated_at DESC)
-  `);
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_bookmarks_user_frequent
-    ON bookmarks(user_id, is_frequent, frequent_order)
-  `);
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_pinned_cards_workspace_group_sort
-    ON pinned_cards(workspace_id, group_id, sort_order)
-  `);
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_groups_workspace_sort
-    ON groups(workspace_id, sort_order)
-  `);
-
-  // Let SQLite auto-checkpoint WAL periodically (~1000 pages, default is often similar but we set explicitly).
-  db.pragma('wal_autocheckpoint = 1000');
-
   // Groups table (for organizing pinned cards in workspaces)
   db.exec(`
     CREATE TABLE IF NOT EXISTS groups (
@@ -171,6 +146,64 @@ export function initDatabase() {
       FOREIGN KEY (active_workspace_id) REFERENCES workspaces(id) ON DELETE SET NULL
     )
   `);
+
+  // Data migration safety: remove duplicate normalized URLs before adding unique index.
+  // Keep newest record by updated_at/created_at/id and delete older duplicates.
+  const duplicateGroups = db
+    .prepare(
+      `
+      SELECT user_id, normalized_url
+      FROM bookmarks
+      WHERE normalized_url IS NOT NULL AND normalized_url != ''
+      GROUP BY user_id, normalized_url
+      HAVING COUNT(1) > 1
+      `
+    )
+    .all() as Array<{ user_id: string; normalized_url: string }>;
+
+  const selectKeepStmt = db.prepare(
+    `
+    SELECT id
+    FROM bookmarks
+    WHERE user_id = ? AND normalized_url = ?
+    ORDER BY datetime(updated_at) DESC, datetime(created_at) DESC, id DESC
+    LIMIT 1
+    `
+  );
+  const deleteDupStmt = db.prepare(
+    'DELETE FROM bookmarks WHERE user_id = ? AND normalized_url = ? AND id != ?'
+  );
+
+  for (const dup of duplicateGroups) {
+    const keep = selectKeepStmt.get(dup.user_id, dup.normalized_url) as { id: string } | undefined;
+    if (!keep) continue;
+    deleteDupStmt.run(dup.user_id, dup.normalized_url, keep.id);
+  }
+
+  // Indexes for hot paths.
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_user_normalized_url
+    ON bookmarks(user_id, normalized_url)
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_bookmarks_user_updated_at
+    ON bookmarks(user_id, updated_at DESC)
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_bookmarks_user_frequent
+    ON bookmarks(user_id, is_frequent, frequent_order)
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_pinned_cards_workspace_group_sort
+    ON pinned_cards(workspace_id, group_id, sort_order)
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_groups_workspace_sort
+    ON groups(workspace_id, sort_order)
+  `);
+
+  // Let SQLite auto-checkpoint WAL periodically (~1000 pages, default is often similar but we set explicitly).
+  db.pragma('wal_autocheckpoint = 1000');
 
   // Insert default admin user if not exists
   const defaultPassword = '$2a$10$qgzmuGjJSYZbCGn3DkTRJOCz4EH4cw5CyafluJDsgzXnvdoRuMlDq'; // @^dhIPdZtcVR@jrd
