@@ -140,7 +140,8 @@
       
       if (result.success) {
         elements.token.value = result.data.token;
-        showStatus(`登录成功！欢迎 ${result.data.username}`, 'success');
+        const displayName = result.data?.user?.username || username;
+        showStatus(`登录成功！欢迎 ${displayName}`, 'success');
         
         // 清空密码
         elements.password.value = '';

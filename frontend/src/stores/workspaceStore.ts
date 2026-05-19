@@ -40,22 +40,6 @@ interface WorkspaceState {
   setActiveGroup: (id: string | null) => void;
 }
 
-// Helper to extract unique tags from bookmarks
-const extractTags = (bookmarks: Bookmark[]): string[] => {
-  const tagSet = new Set<string>();
-  bookmarks.forEach(b => {
-    // 确保 tags 是数组
-    if (b && Array.isArray(b.tags)) {
-      b.tags.forEach(t => {
-        if (typeof t === 'string' && t.trim()) {
-          tagSet.add(t.trim());
-        }
-      });
-    }
-  });
-  return Array.from(tagSet).sort();
-};
-
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   workspaces: [],
   bookmarks: [],
@@ -139,7 +123,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   createBookmark: async (data) => {
-    const { bookmarks, frequentBookmarks } = get();
+    const { bookmarks, frequentBookmarks, tags } = get();
     
     // Optimistic update: generate temp ID and add to state immediately
     const tempId = `temp-${Date.now()}`;
@@ -159,7 +143,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     
     set({ 
       bookmarks: [...bookmarks, newBookmark],
-      tags: extractTags([...bookmarks, newBookmark])
+      tags: Array.from(new Set([...tags, ...newBookmark.tags])).sort(),
     });
     
     if (data.is_frequent) {
@@ -182,8 +166,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       // Replace temp bookmark with real one
       const updatedBookmarks = get().bookmarks.map(b => b.id === tempId ? normalizedBookmark : b);
       set({ 
-        bookmarks: updatedBookmarks,
-        tags: extractTags(updatedBookmarks)
+        bookmarks: updatedBookmarks
       });
       
       if (data.is_frequent) {
@@ -194,14 +177,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     } catch (error) {
       // Revert on error
       set({ 
-        bookmarks: get().bookmarks.filter(b => b.id !== tempId),
-        tags: extractTags(get().bookmarks.filter(b => b.id !== tempId))
+        bookmarks: get().bookmarks.filter(b => b.id !== tempId)
       });
       if (data.is_frequent) {
         set({ frequentBookmarks: get().frequentBookmarks.filter(b => b.id !== tempId) });
       }
       throw error;
     }
+    await get().fetchTags();
   },
 
   updateBookmark: async (id, data) => {
@@ -212,8 +195,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     // Optimistic update
     const updatedBookmark = { ...bookmark, ...data, updated_at: new Date().toISOString() };
     set({ 
-      bookmarks: bookmarks.map(b => b.id === id ? updatedBookmark : b),
-      tags: extractTags(bookmarks.map(b => b.id === id ? updatedBookmark : b))
+      bookmarks: bookmarks.map(b => b.id === id ? updatedBookmark : b)
     });
     
     if (bookmark.is_frequent || data.is_frequent !== undefined) {
@@ -245,6 +227,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     
     try {
       await bookmarkApi.update(id, data);
+      await get().fetchTags();
     } catch (error) {
       // Revert on error
       await get().fetchBookmarks();
@@ -260,8 +243,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     // Optimistic update
     set({ 
       bookmarks: bookmarks.filter(b => b.id !== id),
-      frequentBookmarks: frequentBookmarks.filter(b => b.id !== id),
-      tags: extractTags(bookmarks.filter(b => b.id !== id))
+      frequentBookmarks: frequentBookmarks.filter(b => b.id !== id)
     });
     
     // Also remove from pinned cards
@@ -273,6 +255,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     
     try {
       await bookmarkApi.delete(id);
+      await get().fetchTags();
     } catch (error) {
       // Revert on error
       await get().fetchBookmarks();
