@@ -34,6 +34,7 @@ export function BookmarksPage() {
     toggleFrequent,
   } = useWorkspaceStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
@@ -59,6 +60,7 @@ export function BookmarksPage() {
         reset,
         limit: BOOKMARKS_PAGE_SIZE,
         tag: selectedTag || undefined,
+        q: debouncedSearchQuery || undefined,
       });
     } finally {
       if (reset) {
@@ -76,12 +78,19 @@ export function BookmarksPage() {
   }, []);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
     loadBookmarksPage(true);
-  }, [selectedTag]);
+  }, [selectedTag, debouncedSearchQuery]);
 
   useEffect(() => {
     if (!loadMoreTriggerRef.current) return;
-    if (searchQuery || !bookmarksHasMore || isInitialLoading) return;
+    if (!bookmarksHasMore || isInitialLoading) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -99,21 +108,9 @@ export function BookmarksPage() {
 
     observer.observe(loadMoreTriggerRef.current);
     return () => observer.disconnect();
-  }, [bookmarksHasMore, searchQuery, isLoadingMore, isInitialLoading, selectedTag]);
+  }, [bookmarksHasMore, isLoadingMore, isInitialLoading, selectedTag, debouncedSearchQuery]);
 
-  const filteredBookmarks = useMemo(() => {
-    return bookmarks.filter((bookmark) => {
-      const matchesTag = !selectedTag || (bookmark.tags && bookmark.tags.includes(selectedTag));
-      const title = bookmark.title || '';
-      const url = bookmark.url || '';
-      const description = bookmark.description || '';
-      const matchesSearch = !searchQuery || 
-        title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        url.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        description.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesTag && matchesSearch;
-    });
-  }, [bookmarks, selectedTag, searchQuery]);
+  const filteredBookmarks = useMemo(() => bookmarks, [bookmarks]);
 
   // Auto-fetch metadata when URL changes (for edit mode)
   useEffect(() => {
@@ -446,7 +443,7 @@ export function BookmarksPage() {
           ))}
         </div>
 
-        {!searchQuery && !isInitialLoading && (
+        {!isInitialLoading && (
           <div ref={loadMoreTriggerRef} className="mt-6 flex justify-center">
             {isLoadingMore && (
               <span className="px-4 py-2 text-sm text-gray-500 dark:text-gray-300">加载中...</span>

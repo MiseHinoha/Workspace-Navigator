@@ -77,7 +77,7 @@ export interface BookmarkPageResponse {
 
 export const bookmarkApi = {
   getAll: (tag?: string) => api.get('/bookmarks', { params: { tag } }),
-  getPage: (params?: { tag?: string; limit?: number; offset?: number }) =>
+  getPage: (params?: { tag?: string; q?: string; limit?: number; offset?: number }) =>
     api.get<BookmarkPageResponse>('/bookmarks', { params }),
   getTags: () => api.get('/bookmarks/tags'),
   getFrequent: () => api.get('/bookmarks/frequent'),

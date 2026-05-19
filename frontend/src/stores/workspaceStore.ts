@@ -17,7 +17,7 @@ interface WorkspaceState {
   isLoading: boolean;
   fetchWorkspaces: () => Promise<void>;
   fetchBookmarks: () => Promise<void>;
-  fetchBookmarksPage: (options?: { reset?: boolean; limit?: number; tag?: string }) => Promise<void>;
+  fetchBookmarksPage: (options?: { reset?: boolean; limit?: number; tag?: string; q?: string }) => Promise<void>;
   fetchFrequentBookmarks: () => Promise<void>;
   fetchTags: () => Promise<void>;
   fetchGroups: (workspaceId: string) => Promise<void>;
@@ -84,9 +84,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const limit = options?.limit ?? 50;
     const reset = options?.reset ?? false;
     const tag = options?.tag;
+    const q = options?.q;
     const offset = reset ? 0 : get().bookmarksOffset;
 
-    const { data } = await bookmarkApi.getPage({ limit, offset, tag });
+    const { data } = await bookmarkApi.getPage({ limit, offset, tag, q });
     set((state) => ({
       bookmarks: reset ? data.items : [...state.bookmarks, ...data.items],
       bookmarksTotal: data.total,

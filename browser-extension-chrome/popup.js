@@ -221,6 +221,9 @@
       // 创建书签
       const result = await sendMessage('createBookmark', { bookmark });
       if (!result.success) {
+        if (result.status === 409) {
+          throw new Error('网站已添加，无需重复保存');
+        }
         throw new Error(result.error || '保存失败');
       }
 
