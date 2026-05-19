@@ -152,6 +152,9 @@ function queueMetadataEnrichment(bookmarkId: string, url: string) {
 router.get('/', authMiddleware, (req: AuthenticatedRequest, res) => {
   try {
     const { tag } = req.query;
+    const rawQuery = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const hasSearch = rawQuery.length > 0;
+    const searchLike = `%${rawQuery.replace(/[%_]/g, '\\$&')}%`;
     const rawLimit = Number(req.query.limit);
     const rawOffset = Number(req.query.offset);
     const hasPagination = Number.isFinite(rawLimit) || Number.isFinite(rawOffset);
@@ -159,6 +162,21 @@ router.get('/', authMiddleware, (req: AuthenticatedRequest, res) => {
     const offset = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
     let bookmarks: BookmarkRow[];
     let total = 0;
+
+    const searchClause = hasSearch
+      ? `
+        AND (
+          title LIKE ? ESCAPE '\\'
+          OR url LIKE ? ESCAPE '\\'
+          OR COALESCE(description, '') LIKE ? ESCAPE '\\'
+          OR EXISTS (
+            SELECT 1
+            FROM json_each(bookmarks.tags)
+            WHERE json_each.value LIKE ? ESCAPE '\\'
+          )
+        )
+      `
+      : '';
 
     if (tag) {
       const baseWhere = `
@@ -169,6 +187,7 @@ router.get('/', authMiddleware, (req: AuthenticatedRequest, res) => {
           FROM json_each(bookmarks.tags)
           WHERE json_each.value = ?
         )
+        ${searchClause}
       `;
 
       if (hasPagination) {
@@ -178,29 +197,45 @@ router.get('/', authMiddleware, (req: AuthenticatedRequest, res) => {
           LIMIT ? OFFSET ?
         `);
         const countStmt = db.prepare(`SELECT COUNT(1) as total ${baseWhere}`);
-        bookmarks = stmt.all(req.user!.userId, tag, limit, offset) as BookmarkRow[];
-        total = (countStmt.get(req.user!.userId, tag) as { total: number }).total;
+        const params = hasSearch
+          ? [req.user!.userId, tag, searchLike, searchLike, searchLike, searchLike]
+          : [req.user!.userId, tag];
+        bookmarks = stmt.all(...params, limit, offset) as BookmarkRow[];
+        total = (countStmt.get(...params) as { total: number }).total;
       } else {
         const stmt = db.prepare(`
           SELECT * ${baseWhere}
           ORDER BY updated_at DESC
         `);
-        bookmarks = stmt.all(req.user!.userId, tag) as BookmarkRow[];
+        const params = hasSearch
+          ? [req.user!.userId, tag, searchLike, searchLike, searchLike, searchLike]
+          : [req.user!.userId, tag];
+        bookmarks = stmt.all(...params) as BookmarkRow[];
       }
     } else {
+      const baseWhere = `
+        FROM bookmarks
+        WHERE user_id = ?
+        ${searchClause}
+      `;
       if (hasPagination) {
         const stmt = db.prepare(`
-          SELECT * FROM bookmarks
-          WHERE user_id = ?
+          SELECT * ${baseWhere}
           ORDER BY updated_at DESC
           LIMIT ? OFFSET ?
         `);
-        const countStmt = db.prepare('SELECT COUNT(1) as total FROM bookmarks WHERE user_id = ?');
-        bookmarks = stmt.all(req.user!.userId, limit, offset) as BookmarkRow[];
-        total = (countStmt.get(req.user!.userId) as { total: number }).total;
+        const countStmt = db.prepare(`SELECT COUNT(1) as total ${baseWhere}`);
+        const params = hasSearch
+          ? [req.user!.userId, searchLike, searchLike, searchLike, searchLike]
+          : [req.user!.userId];
+        bookmarks = stmt.all(...params, limit, offset) as BookmarkRow[];
+        total = (countStmt.get(...params) as { total: number }).total;
       } else {
-        const stmt = db.prepare('SELECT * FROM bookmarks WHERE user_id = ? ORDER BY updated_at DESC');
-        bookmarks = stmt.all(req.user!.userId) as BookmarkRow[];
+        const stmt = db.prepare(`SELECT * ${baseWhere} ORDER BY updated_at DESC`);
+        const params = hasSearch
+          ? [req.user!.userId, searchLike, searchLike, searchLike, searchLike]
+          : [req.user!.userId];
+        bookmarks = stmt.all(...params) as BookmarkRow[];
       }
     }
 

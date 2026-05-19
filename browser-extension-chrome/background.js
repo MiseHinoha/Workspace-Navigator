@@ -49,8 +49,11 @@ async function apiRequest(endpoint, options = {}) {
     if (response.status === 401) {
       throw new Error('Token 已过期，请重新登录');
     }
-    const error = await response.json().catch(() => ({ message: '请求失败' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const errorPayload = await response.json().catch(() => ({}));
+    const error = new Error(errorPayload.error || errorPayload.message || `HTTP ${response.status}`);
+    error.status = response.status;
+    error.payload = errorPayload;
+    throw error;
   }
 
   // 204 No Content 或空响应
@@ -156,7 +159,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
     } catch (error) {
       console.error('[Workspace Navigator] Error:', error);
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: error?.message || '请求失败',
+        status: error?.status,
+        payload: error?.payload
+      };
     }
   };
 
