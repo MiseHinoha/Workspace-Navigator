@@ -1,5 +1,6 @@
 import { ExternalLink, Edit2, Trash2, GripVertical } from 'lucide-react';
 import { Bookmark } from '../types';
+import { SiteIcon } from './SiteIcon';
 
 interface DraggableBookmarkProps {
   bookmark: Bookmark;
@@ -27,35 +28,12 @@ export function DraggableBookmark({ bookmark, onEdit, onDelete }: DraggableBookm
 
       {/* Icon */}
       <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-gray-50 rounded-lg overflow-hidden">
-        {bookmark.icon ? (
-          <img 
-            src={bookmark.icon} 
-            alt="" 
-            className="w-5 h-5 object-contain"
-            onError={(e) => {
-              // Fallback to Google favicon or emoji
-              const target = e.target as HTMLImageElement;
-              const urlObj = new URL(bookmark.url);
-              target.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
-              target.onerror = () => {
-                // If Google favicon also fails, show emoji
-                target.style.display = 'none';
-                target.parentElement!.innerHTML = '<span class="text-lg">🔗</span>';
-              };
-            }}
-          />
-        ) : (
-          <img 
-            src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`}
-            alt=""
-            className="w-5 h-5 object-contain"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              target.parentElement!.innerHTML = '<span class="text-lg">🔗</span>';
-            }}
-          />
-        )}
+        <SiteIcon
+          url={bookmark.url}
+          icon={bookmark.icon}
+          className="w-5 h-5 object-contain"
+          fallbackClassName="text-lg"
+        />
       </div>
 
       {/* Content */}

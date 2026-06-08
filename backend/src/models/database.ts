@@ -82,6 +82,18 @@ export function initDatabase() {
     )
   `);
 
+  // Icon cache table (stores fetched site icons so the frontend doesn't hotlink third-party resources).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS icon_cache (
+      cache_key TEXT PRIMARY KEY,
+      source_url TEXT NOT NULL,
+      icon_url TEXT,
+      content_type TEXT NOT NULL,
+      icon_data BLOB NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Lightweight migration: add normalized_url for fast deduplication.
   const bookmarkColumns = db.prepare('PRAGMA table_info(bookmarks)').all() as Array<{ name: string }>;
   const hasNormalizedUrl = bookmarkColumns.some((column) => column.name === 'normalized_url');

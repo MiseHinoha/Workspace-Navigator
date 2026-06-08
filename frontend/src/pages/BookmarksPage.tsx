@@ -7,6 +7,7 @@ import { QuickAddBookmark } from '../components/QuickAddBookmark';
 import { TagInput } from '../components/TagInput';
 import { AutoScrollTitle } from '../components/AutoScrollTitle';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { SiteIcon } from '../components/SiteIcon';
 
 interface BookmarkFormData {
   title: string;
@@ -220,41 +221,12 @@ export function BookmarksPage() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:shadow-sm transition-all group"
                 >
-                  {bookmark.icon ? (
-                    <img 
-                      src={bookmark.icon} 
-                      alt="" 
-                      className="w-5 h-5 object-contain flex-shrink-0"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        const urlObj = new URL(bookmark.url);
-                        target.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
-                        target.onerror = () => {
-                          target.style.display = 'none';
-                          const parent = target.parentElement!;
-                          const emoji = document.createElement('span');
-                          emoji.className = 'text-lg flex-shrink-0';
-                          emoji.textContent = '🔗';
-                          parent.insertBefore(emoji, target);
-                        };
-                      }}
-                    />
-                  ) : (
-                    <img 
-                      src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`}
-                      alt=""
-                      className="w-5 h-5 object-contain flex-shrink-0"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const parent = target.parentElement!;
-                        const emoji = document.createElement('span');
-                        emoji.className = 'text-lg flex-shrink-0';
-                        emoji.textContent = '🔗';
-                        parent.insertBefore(emoji, target);
-                      }}
-                    />
-                  )}
+                  <SiteIcon
+                    url={bookmark.url}
+                    icon={bookmark.icon}
+                    className="w-5 h-5 object-contain flex-shrink-0"
+                    fallbackClassName="text-lg flex-shrink-0"
+                  />
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate flex-1">{bookmark.title || bookmark.url || '未命名'}</span>
                   <ExternalLink size={14} className="text-gray-300 group-hover:text-gray-500 flex-shrink-0" />
                 </a>
@@ -320,41 +292,12 @@ export function BookmarksPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
-                      {bookmark.icon ? (
-                        <img 
-                          src={bookmark.icon} 
-                          alt="" 
-                          className="w-6 h-6 object-contain"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            const urlObj = new URL(bookmark.url);
-                            target.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
-                            target.onerror = () => {
-                              target.style.display = 'none';
-                              const parent = target.parentElement!;
-                              const emoji = document.createElement('span');
-                              emoji.className = 'text-lg';
-                              emoji.textContent = '🔗';
-                              parent.appendChild(emoji);
-                            };
-                          }}
-                        />
-                      ) : (
-                        <img 
-                          src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`}
-                          alt=""
-                          className="w-6 h-6 object-contain"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const parent = target.parentElement!;
-                            const emoji = document.createElement('span');
-                            emoji.className = 'text-lg';
-                            emoji.textContent = '🔗';
-                            parent.appendChild(emoji);
-                          }}
-                        />
-                      )}
+                      <SiteIcon
+                        url={bookmark.url}
+                        icon={bookmark.icon}
+                        className="w-6 h-6 object-contain"
+                        fallbackClassName="text-lg"
+                      />
                     </div>
                     <div className="flex-1 min-w-0 overflow-hidden">
                       {/* Auto-scroll title on hover */}

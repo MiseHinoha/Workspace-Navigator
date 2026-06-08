@@ -3,6 +3,7 @@ import { X, Search, ExternalLink, GripVertical, Bookmark } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark as BookmarkType } from '../types';
 import { bookmarkApi } from '../utils/api';
+import { SiteIcon } from './SiteIcon';
 
 interface BookmarkDrawerProps {
   isOpen: boolean;
@@ -317,33 +318,12 @@ function DraggableBookmarkItem({ bookmark, onDragStart: onDragStartProp, onDragE
       <GripVertical size={16} className="text-gray-300 dark:text-gray-500 flex-shrink-0" />
       
       <div className="w-8 h-8 flex items-center justify-center bg-gray-50 dark:bg-gray-600 rounded flex-shrink-0 overflow-hidden">
-        {bookmark.icon ? (
-          <img 
-            src={bookmark.icon} 
-            alt="" 
-            className="w-5 h-5 object-contain"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              const urlObj = new URL(bookmark.url);
-              target.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
-              target.onerror = () => {
-                target.style.display = 'none';
-                target.parentElement!.innerHTML = '<span class="text-sm">🔗</span>';
-              };
-            }}
-          />
-        ) : (
-          <img 
-            src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`}
-            alt=""
-            className="w-5 h-5 object-contain"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              target.parentElement!.innerHTML = '<span class="text-sm">🔗</span>';
-            }}
-          />
-        )}
+        <SiteIcon
+          url={bookmark.url}
+          icon={bookmark.icon}
+          className="w-5 h-5 object-contain"
+          fallbackClassName="text-sm"
+        />
       </div>
 
       <div className="flex-1 min-w-0">

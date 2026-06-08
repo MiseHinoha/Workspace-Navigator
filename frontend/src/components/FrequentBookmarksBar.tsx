@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Star, ChevronLeft, ChevronRight, MoreHorizontal, GripVertical } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
+import { SiteIcon } from './SiteIcon';
 
 export function FrequentBookmarksBar() {
   const { frequentBookmarks, fetchFrequentBookmarks, bookmarks, toggleFrequent } = useWorkspaceStore();
@@ -88,34 +89,12 @@ export function FrequentBookmarksBar() {
                 rel="noopener noreferrer"
                 className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-gray-600 hover:text-blue-700 dark:hover:text-blue-300 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-300 transition-all group"
               >
-                {bookmark.icon ? (
-                  <img 
-                    src={bookmark.icon} 
-                    alt="" 
-                    className="w-4 h-4 object-contain"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      try {
-                        const urlObj = new URL(bookmark.url);
-                        target.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
-                      } catch {
-                        target.style.display = 'none';
-                        target.parentElement!.innerHTML = '<span class="text-xs">🔗</span>';
-                      }
-                    }}
-                  />
-                ) : (
-                  <img 
-                    src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`}
-                    alt=""
-                    className="w-4 h-4 object-contain"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      target.parentElement!.innerHTML = '<span class="text-xs">🔗</span>';
-                    }}
-                  />
-                )}
+                <SiteIcon
+                  url={bookmark.url}
+                  icon={bookmark.icon}
+                  className="w-4 h-4 object-contain"
+                  fallbackClassName="text-xs"
+                />
                 <span className="max-w-[120px] truncate">{bookmark.title || bookmark.url || '未命名'}</span>
               </a>
             ))}
@@ -195,34 +174,12 @@ export function FrequentBookmarksBar() {
                           className="flex items-center gap-2 flex-1"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {bookmark.icon ? (
-                            <img 
-                              src={bookmark.icon} 
-                              alt="" 
-                              className="w-4 h-4 object-contain"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                try {
-                                  const urlObj = new URL(bookmark.url);
-                                  target.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
-                                } catch {
-                                  target.style.display = 'none';
-                                  target.parentElement!.innerHTML = '<span class="text-xs">🔗</span>';
-                                }
-                              }}
-                            />
-                          ) : (
-                            <img 
-                              src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`}
-                              alt=""
-                              className="w-4 h-4 object-contain"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                target.parentElement!.innerHTML = '<span class="text-xs">🔗</span>';
-                              }}
-                            />
-                          )}
+                          <SiteIcon
+                            url={bookmark.url}
+                            icon={bookmark.icon}
+                            className="w-4 h-4 object-contain"
+                            fallbackClassName="text-xs"
+                          />
                           <span className="text-sm text-gray-700 truncate">{bookmark.title || bookmark.url || '未命名'}</span>
                         </a>
                       </div>

@@ -3,6 +3,7 @@ import { X, Plus, Folder, FolderOpen, Edit2, Trash2, ExternalLink } from 'lucide
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Bookmark, PinnedCard, Group } from '../types';
 import { AutoScrollTitle } from './AutoScrollTitle';
+import { SiteIcon } from './SiteIcon';
 
 export function WorkspaceCanvas() {
   const { 
@@ -382,15 +383,6 @@ function PinnedCardItem({
 }: PinnedCardItemProps) {
   const [isHovered, setIsHovered] = useState(false);
 
-  const getFavicon = (url: string) => {
-    try {
-      const domain = new URL(url).hostname;
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-    } catch {
-      return '';
-    }
-  };
-
   const handleOpenLink = () => {
     window.open(card.url, '_blank', 'noopener,noreferrer');
   };
@@ -428,27 +420,12 @@ function PinnedCardItem({
         {/* Card Header */}
         <div className="flex items-start gap-3 p-4 pr-14 min-w-0">
           <div className="w-12 h-12 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0">
-            {card.icon ? (
-              <img 
-                src={card.icon} 
-                alt="" 
-                className="w-8 h-8 object-contain"
-                onError={(e) => {
-                  // Fallback to Google favicon on error
-                  const target = e.target as HTMLImageElement;
-                  target.src = getFavicon(card.url);
-                }}
-              />
-            ) : (
-              <img 
-                src={getFavicon(card.url)} 
-                alt="" 
-                className="w-8 h-8 object-contain"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            )}
+            <SiteIcon
+              url={card.url}
+              icon={card.icon}
+              className="w-8 h-8 object-contain"
+              fallbackClassName="text-xl"
+            />
           </div>
           <div className="flex-1 min-w-0 overflow-hidden">
             {/* Auto-scroll title on hover */}
