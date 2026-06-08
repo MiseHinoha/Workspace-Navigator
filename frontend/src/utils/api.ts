@@ -89,6 +89,14 @@ export const bookmarkApi = {
   delete: (id: string) => api.delete(`/bookmarks/${id}`),
 };
 
+export function getBookmarkIconUrl(url: string, icon?: string) {
+  const params = new URLSearchParams({ url });
+  if (icon?.trim()) {
+    params.set('icon', icon.trim());
+  }
+  return `${API_URL}/api/bookmarks/icon?${params.toString()}`;
+}
+
 // Group API
 export const groupApi = {
   getByWorkspace: (workspaceId: string) => api.get(`/groups/workspace/${workspaceId}`),

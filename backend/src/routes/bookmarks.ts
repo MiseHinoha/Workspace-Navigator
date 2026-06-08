@@ -8,6 +8,8 @@ import { BookmarkRow } from '../types';
 
 const router = Router();
 const PERF_LOG_PREFIX = '[BOOKMARK_PERF]';
+const ICON_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const ICON_FETCH_TIMEOUT_MS = 8000;
 
 const metadataMetrics = {
   total: 0,
@@ -55,7 +57,90 @@ function toPublicBookmark(row: BookmarkRow) {
   };
 }
 
-async function fetchMetadata(targetUrl: string): Promise<{ title?: string; icon?: string; description?: string }> {
+function normalizeTargetUrl(rawUrl: string): string {
+  return rawUrl.startsWith('http://') || rawUrl.startsWith('https://') ? rawUrl : `https://${rawUrl}`;
+}
+
+function getIconCacheKey(targetUrl: string): string {
+  const urlObj = new URL(targetUrl);
+  return urlObj.origin.toLowerCase();
+}
+
+function isGoogleFaviconUrl(rawUrl?: string | null): boolean {
+  return !!rawUrl && rawUrl.includes('google.com/s2/favicons');
+}
+
+function absoluteUrl(baseUrl: string, maybeRelativeUrl: string): string {
+  return new URL(maybeRelativeUrl, baseUrl).toString();
+}
+
+function buildCommonIconCandidates(targetUrl: string): string[] {
+  const urlObj = new URL(targetUrl);
+  return [
+    '/favicon.ico',
+    '/apple-touch-icon.png',
+    '/favicon-32x32.png',
+    '/favicon-16x16.png',
+  ].map((pathname) => `${urlObj.origin}${pathname}`);
+}
+
+function isBlockedIconHost(targetUrl: string): boolean {
+  const hostname = new URL(targetUrl).hostname.toLowerCase();
+  if (hostname === 'localhost' || hostname === '::1' || hostname === '[::1]') return true;
+  if (/^(127|10)\./.test(hostname)) return true;
+  if (/^192\.168\./.test(hostname)) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)) return true;
+  return false;
+}
+
+function dedupeUrls(urls: Array<string | undefined | null>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const rawUrl of urls) {
+    const nextUrl = rawUrl?.trim();
+    if (!nextUrl || seen.has(nextUrl)) continue;
+    seen.add(nextUrl);
+    result.push(nextUrl);
+  }
+
+  return result;
+}
+
+function isUsableImageResponse(contentType: string | undefined, resourceUrl: string): boolean {
+  const lowerType = (contentType || '').toLowerCase();
+  if (lowerType.startsWith('image/')) return true;
+  if (lowerType.includes('application/octet-stream')) {
+    return /\.(ico|png|svg|jpg|jpeg|webp|gif)(\?|$)/i.test(resourceUrl);
+  }
+  return false;
+}
+
+function buildFallbackSvg(targetUrl: string): Buffer {
+  let label = 'W';
+  let accent = '#2563eb';
+
+  try {
+    const hostname = new URL(targetUrl).hostname.replace(/^www\./, '');
+    label = hostname.charAt(0).toUpperCase() || 'W';
+    const palette = ['#2563eb', '#0891b2', '#059669', '#ea580c', '#db2777', '#7c3aed'];
+    const codePoint = hostname.charCodeAt(0) || 0;
+    accent = palette[codePoint % palette.length];
+  } catch {
+    // noop
+  }
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Website icon fallback">
+      <rect width="64" height="64" rx="16" fill="${accent}"/>
+      <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#ffffff">${label}</text>
+    </svg>
+  `.trim();
+
+  return Buffer.from(svg, 'utf8');
+}
+
+async function fetchHtmlMetadata(targetUrl: string) {
   const response = await axios.get(targetUrl, {
     timeout: 10000,
     headers: {
@@ -66,7 +151,30 @@ async function fetchMetadata(targetUrl: string): Promise<{ title?: string; icon?
     maxRedirects: 10,
   });
 
-  const $ = cheerio.load(response.data);
+  return cheerio.load(response.data);
+}
+
+function extractIconCandidates(targetUrl: string, $: cheerio.CheerioAPI): string[] {
+  const selectors = [
+    'link[rel="apple-touch-icon"][sizes="180x180"]',
+    'link[rel="apple-touch-icon"]',
+    'link[rel="icon"][sizes="32x32"]',
+    'link[rel="icon"][sizes="16x16"]',
+    'link[rel="shortcut icon"]',
+    'link[rel="mask-icon"]',
+    'link[rel="icon"]',
+  ];
+
+  const discovered = selectors
+    .map((selector) => $(selector).attr('href'))
+    .filter((href): href is string => !!href)
+    .map((href) => absoluteUrl(targetUrl, href));
+
+  return dedupeUrls([...discovered, ...buildCommonIconCandidates(targetUrl)]);
+}
+
+async function fetchMetadata(targetUrl: string): Promise<{ title?: string; icon?: string; description?: string }> {
+  const $ = await fetchHtmlMetadata(targetUrl);
 
   let title =
     $('title').first().text().trim() ||
@@ -74,30 +182,13 @@ async function fetchMetadata(targetUrl: string): Promise<{ title?: string; icon?
     $('meta[name="twitter:title"]').attr('content') ||
     '';
 
-  let icon =
-    $('link[rel="apple-touch-icon"][sizes="180x180"]').attr('href') ||
-    $('link[rel="apple-touch-icon"]').attr('href') ||
-    $('link[rel="icon"]').attr('href') ||
-    $('link[rel="shortcut icon"]').attr('href') ||
-    $('meta[property="og:image"]').attr('content') ||
-    '';
+  const icon = extractIconCandidates(targetUrl, $)[0] || '';
 
   const description =
     $('meta[name="description"]').attr('content') ||
     $('meta[property="og:description"]').attr('content') ||
     $('meta[name="twitter:description"]').attr('content') ||
     '';
-
-  if (icon && !icon.startsWith('http')) {
-    const urlObj = new URL(targetUrl);
-    if (icon.startsWith('/')) {
-      icon = `${urlObj.protocol}//${urlObj.host}${icon}`;
-    } else if (icon.startsWith('./')) {
-      icon = `${urlObj.protocol}//${urlObj.host}${icon.slice(1)}`;
-    } else {
-      icon = `${urlObj.protocol}//${urlObj.host}/${icon}`;
-    }
-  }
 
   if (title) {
     try {
@@ -110,6 +201,98 @@ async function fetchMetadata(targetUrl: string): Promise<{ title?: string; icon?
   }
 
   return { title: title || undefined, icon: icon || undefined, description: description || undefined };
+}
+
+async function fetchIconBinary(iconUrl: string): Promise<{ contentType: string; data: Buffer }> {
+  const response = await axios.get<ArrayBuffer>(iconUrl, {
+    responseType: 'arraybuffer',
+    timeout: ICON_FETCH_TIMEOUT_MS,
+    maxRedirects: 5,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    },
+    validateStatus: (status) => status >= 200 && status < 400,
+  });
+
+  const contentType = String(response.headers['content-type'] || '').split(';')[0].trim();
+  if (!isUsableImageResponse(contentType, iconUrl)) {
+    throw new Error(`Unsupported icon content type: ${contentType || 'unknown'}`);
+  }
+
+  return {
+    contentType: contentType || 'image/x-icon',
+    data: Buffer.from(response.data),
+  };
+}
+
+async function resolveIconAsset(targetUrl: string, providedIconUrl?: string | null) {
+  let metadataIcon: string | undefined;
+
+  try {
+    metadataIcon = (await fetchMetadata(targetUrl)).icon;
+  } catch (error) {
+    console.warn(`${PERF_LOG_PREFIX} metadata_icon_lookup_failed url=${targetUrl}`, error);
+  }
+
+  const candidateUrls = dedupeUrls([
+    providedIconUrl && !isGoogleFaviconUrl(providedIconUrl) ? providedIconUrl : undefined,
+    metadataIcon,
+    ...buildCommonIconCandidates(targetUrl),
+  ]);
+
+  for (const candidateUrl of candidateUrls) {
+    try {
+      const asset = await fetchIconBinary(candidateUrl);
+      return { iconUrl: candidateUrl, ...asset };
+    } catch (error) {
+      console.warn(`${PERF_LOG_PREFIX} icon_candidate_failed url=${targetUrl} candidate=${candidateUrl}`, error);
+    }
+  }
+
+  return null;
+}
+
+type IconCacheRow = {
+  cache_key: string;
+  source_url: string;
+  icon_url: string | null;
+  content_type: string;
+  icon_data: Buffer;
+  updated_at: string;
+};
+
+function getCachedIcon(cacheKey: string): IconCacheRow | undefined {
+  return db
+    .prepare('SELECT cache_key, source_url, icon_url, content_type, icon_data, updated_at FROM icon_cache WHERE cache_key = ?')
+    .get(cacheKey) as IconCacheRow | undefined;
+}
+
+function isFreshIconCache(row: IconCacheRow): boolean {
+  const updatedAtMs = Date.parse(row.updated_at.replace(' ', 'T') + 'Z');
+  return Number.isFinite(updatedAtMs) && Date.now() - updatedAtMs < ICON_CACHE_TTL_MS;
+}
+
+function upsertIconCache(cacheKey: string, sourceUrl: string, iconUrl: string | null, contentType: string, data: Buffer) {
+  db.prepare(
+    `
+    INSERT INTO icon_cache (cache_key, source_url, icon_url, content_type, icon_data, updated_at)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(cache_key) DO UPDATE SET
+      source_url = excluded.source_url,
+      icon_url = excluded.icon_url,
+      content_type = excluded.content_type,
+      icon_data = excluded.icon_data,
+      updated_at = CURRENT_TIMESTAMP
+    `
+  ).run(cacheKey, sourceUrl, iconUrl, contentType, data);
+}
+
+function sendIcon(res: any, contentType: string, data: Buffer, maxAgeSeconds: number) {
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Cache-Control', `public, max-age=${maxAgeSeconds}, stale-while-revalidate=86400`);
+  res.send(data);
 }
 
 function queueMetadataEnrichment(bookmarkId: string, url: string) {
@@ -127,10 +310,9 @@ function queueMetadataEnrichment(bookmarkId: string, url: string) {
       if (!current) return;
 
       const fallbackTitle = urlObj.hostname.replace(/^www\./, '');
-      const fallbackIcon = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`;
-
       const nextTitle = current.title === fallbackTitle ? metadata.title || current.title : current.title;
-      const nextIcon = !current.icon || current.icon === fallbackIcon ? metadata.icon || fallbackIcon : current.icon;
+      const nextIcon =
+        !current.icon || isGoogleFaviconUrl(current.icon) ? metadata.icon || current.icon || null : current.icon;
       const nextDescription = !current.description ? metadata.description || current.description : current.description;
 
       db.prepare(
@@ -264,17 +446,14 @@ router.get('/fetch-metadata', authMiddleware, async (req: AuthenticatedRequest, 
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    let targetUrl = url;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      targetUrl = 'https://' + url;
-    }
+    const targetUrl = normalizeTargetUrl(url);
 
     try {
       const metadata = await fetchMetadata(targetUrl);
       const urlObj = new URL(targetUrl);
       res.json({
         title: metadata.title || urlObj.hostname,
-        icon: metadata.icon || `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`,
+        icon: metadata.icon || '',
         description: metadata.description || '',
         url: targetUrl,
       });
@@ -282,7 +461,7 @@ router.get('/fetch-metadata', authMiddleware, async (req: AuthenticatedRequest, 
       const urlObj = new URL(targetUrl);
       res.json({
         title: urlObj.hostname,
-        icon: `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`,
+        icon: '',
         description: '',
         url: targetUrl,
       });
@@ -290,6 +469,43 @@ router.get('/fetch-metadata', authMiddleware, async (req: AuthenticatedRequest, 
   } catch (error) {
     console.error('Fetch metadata error:', error);
     res.status(500).json({ error: 'Failed to fetch metadata' });
+  }
+});
+
+router.get('/icon', async (req, res) => {
+  try {
+    const rawUrl = typeof req.query.url === 'string' ? req.query.url.trim() : '';
+    const providedIconUrl = typeof req.query.icon === 'string' ? req.query.icon.trim() : '';
+
+    if (!rawUrl) {
+      return sendIcon(res, 'image/svg+xml; charset=utf-8', buildFallbackSvg('about:blank'), 3600);
+    }
+
+    const targetUrl = normalizeTargetUrl(rawUrl);
+    if (isBlockedIconHost(targetUrl)) {
+      return sendIcon(res, 'image/svg+xml; charset=utf-8', buildFallbackSvg(targetUrl), 3600);
+    }
+    const cacheKey = getIconCacheKey(targetUrl);
+    const cached = getCachedIcon(cacheKey);
+
+    if (cached && isFreshIconCache(cached)) {
+      return sendIcon(res, cached.content_type, cached.icon_data, 86400);
+    }
+
+    const resolved = await resolveIconAsset(targetUrl, providedIconUrl || undefined);
+    if (resolved) {
+      upsertIconCache(cacheKey, targetUrl, resolved.iconUrl, resolved.contentType, resolved.data);
+      return sendIcon(res, resolved.contentType, resolved.data, 86400);
+    }
+
+    if (cached) {
+      return sendIcon(res, cached.content_type, cached.icon_data, 3600);
+    }
+
+    return sendIcon(res, 'image/svg+xml; charset=utf-8', buildFallbackSvg(targetUrl), 3600);
+  } catch (error) {
+    console.error('Fetch icon error:', error);
+    return sendIcon(res, 'image/svg+xml; charset=utf-8', buildFallbackSvg('about:blank'), 300);
   }
 });
 
@@ -330,9 +546,7 @@ router.post('/', authMiddleware, (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://' + url;
-    }
+    url = normalizeTargetUrl(url);
 
     const userId = req.user!.userId;
     const normalizedUrl = normalizeBookmarkUrl(url);
@@ -361,7 +575,7 @@ router.post('/', authMiddleware, (req: AuthenticatedRequest, res) => {
 
     const urlObj = new URL(url);
     const fallbackTitle = title?.trim() || urlObj.hostname.replace(/^www\./, '');
-    const fallbackIcon = icon?.trim() || `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`;
+    const fallbackIcon = icon?.trim() || null;
 
     db.prepare(
       `INSERT INTO bookmarks
