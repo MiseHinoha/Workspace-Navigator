@@ -166,23 +166,25 @@ export function FrequentBookmarksBar() {
                         key={bookmark.id}
                         className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                       >
-                        <GripVertical size={14} className="text-gray-300" />
+                        <GripVertical size={14} className="text-gray-300 flex-shrink-0" />
                         <a
                           href={bookmark.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 flex-1"
+                          className="flex min-w-0 items-center gap-2 flex-1"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <SiteIcon
                             url={bookmark.url}
                             icon={bookmark.icon}
-                            className="w-4 h-4 object-contain"
+                            className="w-4 h-4 object-contain flex-shrink-0"
                             fallbackClassName="text-xs"
                           />
-                          <span className="text-sm text-gray-700 dark:text-gray-200 truncate">{bookmark.title || bookmark.url || '未命名'}</span>
+                          <span className="min-w-0 flex-1 truncate text-sm text-gray-700 dark:text-gray-200">
+                            {bookmark.title || bookmark.url || '未命名'}
+                          </span>
                         </a>
-                        <div className="flex items-center gap-1">
+                        <div className="flex flex-shrink-0 items-center gap-1">
                           <button
                             type="button"
                             onClick={() => moveFrequentBookmark(bookmark.id, 'up')}
