@@ -110,22 +110,28 @@ export function WorkspaceSelector() {
           {workspaces.map((workspace, index) => (
             <div
               key={workspace.id}
-              className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
+              className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
                 activeWorkspaceId === workspace.id
                   ? 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800/60'
                   : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent'
               }`}
               onClick={() => setActiveWorkspace(workspace.id)}
             >
-              <span className="text-xl">{workspace.icon || '📁'}</span>
-              <div className="flex-1 min-w-0">
+              <span className="text-xl flex-shrink-0">{workspace.icon || '📁'}</span>
+              <div className="flex-1 min-w-0 pr-2">
                 <p className="font-medium truncate">{workspace.name}</p>
                 {workspace.description && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{workspace.description}</p>
                 )}
               </div>
               
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div
+                className={`absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-lg px-1 py-0.5 backdrop-blur-sm transition-opacity ${
+                  activeWorkspaceId === workspace.id
+                    ? 'bg-blue-50/95 dark:bg-blue-900/85'
+                    : 'bg-gray-100/95 dark:bg-gray-800/90 opacity-0 group-hover:opacity-100'
+                }`}
+              >
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
