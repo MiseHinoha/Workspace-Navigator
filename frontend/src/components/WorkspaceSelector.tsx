@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, Edit2, Trash2, Bookmark, FolderKanban, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, Bookmark, FolderKanban, X, GripVertical } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Workspace } from '../types';
 
@@ -22,10 +22,12 @@ export function WorkspaceSelector() {
     createWorkspace,
     updateWorkspace,
     deleteWorkspace,
-    moveWorkspace,
+    reorderWorkspaces,
   } = useWorkspaceStore();
   const [isCreating, setIsCreating] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
+  const [draggedWorkspaceId, setDraggedWorkspaceId] = useState<string | null>(null);
+  const [dragOverWorkspaceId, setDragOverWorkspaceId] = useState<string | null>(null);
   const [formData, setFormData] = useState<WorkspaceFormData>({ name: '', description: '', icon: '' });
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -63,6 +65,47 @@ export function WorkspaceSelector() {
 
   const isHome = location.pathname === '/';
   const isBookmarks = location.pathname === '/bookmarks';
+
+  const handleWorkspaceDragStart = (e: React.DragEvent<HTMLButtonElement>, workspaceId: string) => {
+    e.stopPropagation();
+    setDraggedWorkspaceId(workspaceId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('workspace/id', workspaceId);
+  };
+
+  const handleWorkspaceDragOver = (e: React.DragEvent<HTMLDivElement>, workspaceId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedWorkspaceId && draggedWorkspaceId !== workspaceId) {
+      setDragOverWorkspaceId(workspaceId);
+    }
+  };
+
+  const handleWorkspaceDrop = async (e: React.DragEvent<HTMLDivElement>, targetWorkspaceId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const sourceWorkspaceId = e.dataTransfer.getData('workspace/id') || draggedWorkspaceId;
+    setDraggedWorkspaceId(null);
+    setDragOverWorkspaceId(null);
+
+    if (!sourceWorkspaceId || sourceWorkspaceId === targetWorkspaceId) return;
+
+    const nextWorkspaces = [...workspaces];
+    const sourceIndex = nextWorkspaces.findIndex((workspace) => workspace.id === sourceWorkspaceId);
+    const targetIndex = nextWorkspaces.findIndex((workspace) => workspace.id === targetWorkspaceId);
+
+    if (sourceIndex === -1 || targetIndex === -1) return;
+
+    const [movedWorkspace] = nextWorkspaces.splice(sourceIndex, 1);
+    nextWorkspaces.splice(targetIndex, 0, movedWorkspace);
+    await reorderWorkspaces(nextWorkspaces);
+  };
+
+  const handleWorkspaceDragEnd = () => {
+    setDraggedWorkspaceId(null);
+    setDragOverWorkspaceId(null);
+  };
 
   return (
     <div className="space-y-2">
@@ -107,16 +150,30 @@ export function WorkspaceSelector() {
             </button>
           </div>
 
-          {workspaces.map((workspace, index) => (
+          {workspaces.map((workspace) => (
             <div
               key={workspace.id}
-              className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
+              onDragOver={(e) => handleWorkspaceDragOver(e, workspace.id)}
+              onDrop={(e) => handleWorkspaceDrop(e, workspace.id)}
+              className={`group relative flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
                 activeWorkspaceId === workspace.id
                   ? 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800/60'
                   : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent'
+              } ${draggedWorkspaceId === workspace.id ? 'opacity-55' : ''} ${
+                dragOverWorkspaceId === workspace.id ? 'ring-2 ring-blue-300 dark:ring-blue-700' : ''
               }`}
               onClick={() => setActiveWorkspace(workspace.id)}
             >
+              <button
+                draggable
+                onClick={(e) => e.stopPropagation()}
+                onDragStart={(e) => handleWorkspaceDragStart(e, workspace.id)}
+                onDragEnd={handleWorkspaceDragEnd}
+                className="flex h-6 w-4 flex-shrink-0 cursor-grab items-center justify-center rounded text-gray-300 hover:bg-gray-100 hover:text-gray-500 active:cursor-grabbing dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                title="拖动排序"
+              >
+                <GripVertical size={16} />
+              </button>
               <span className="text-xl flex-shrink-0">{workspace.icon || '📁'}</span>
               <div className="flex-1 min-w-0 pr-2">
                 <p className="font-medium truncate">{workspace.name}</p>
@@ -132,28 +189,6 @@ export function WorkspaceSelector() {
                     : 'bg-gray-100/95 dark:bg-gray-800/90 opacity-0 group-hover:opacity-100'
                 }`}
               >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    moveWorkspace(workspace.id, 'up');
-                  }}
-                  disabled={index === 0}
-                  className="p-1.5 text-gray-400 hover:text-blue-600 rounded disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="上移"
-                >
-                  <ArrowUp size={14} />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    moveWorkspace(workspace.id, 'down');
-                  }}
-                  disabled={index === workspaces.length - 1}
-                  className="p-1.5 text-gray-400 hover:text-blue-600 rounded disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="下移"
-                >
-                  <ArrowDown size={14} />
-                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
