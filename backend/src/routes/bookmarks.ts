@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { createHash } from 'crypto';
 import db from '../models/database';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
 import { BookmarkRow } from '../types';
@@ -10,6 +11,8 @@ const router = Router();
 const PERF_LOG_PREFIX = '[BOOKMARK_PERF]';
 const ICON_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const ICON_FETCH_TIMEOUT_MS = 8000;
+const ICON_BROWSER_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+const ICON_FALLBACK_MAX_AGE_SECONDS = 6 * 60 * 60;
 
 const metadataMetrics = {
   total: 0,
@@ -289,9 +292,37 @@ function upsertIconCache(cacheKey: string, sourceUrl: string, iconUrl: string | 
   ).run(cacheKey, sourceUrl, iconUrl, contentType, data);
 }
 
-function sendIcon(res: any, contentType: string, data: Buffer, maxAgeSeconds: number) {
+function toHttpDate(updatedAt?: string | null): string | undefined {
+  if (!updatedAt) return undefined;
+  const updatedAtMs = Date.parse(updatedAt.replace(' ', 'T') + 'Z');
+  if (!Number.isFinite(updatedAtMs)) return undefined;
+  return new Date(updatedAtMs).toUTCString();
+}
+
+function getIconEtag(data: Buffer): string {
+  return `"${createHash('sha1').update(data).digest('hex')}"`;
+}
+
+function sendIcon(req: any, res: any, contentType: string, data: Buffer, maxAgeSeconds: number, updatedAt?: string | null) {
+  const etag = getIconEtag(data);
+  const lastModified = toHttpDate(updatedAt);
+
+  if (req.headers['if-none-match'] === etag) {
+    res.status(304);
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', `public, max-age=${maxAgeSeconds}, stale-while-revalidate=86400`);
+    if (lastModified) {
+      res.setHeader('Last-Modified', lastModified);
+    }
+    return res.end();
+  }
+
   res.setHeader('Content-Type', contentType);
   res.setHeader('Cache-Control', `public, max-age=${maxAgeSeconds}, stale-while-revalidate=86400`);
+  res.setHeader('ETag', etag);
+  if (lastModified) {
+    res.setHeader('Last-Modified', lastModified);
+  }
   res.send(data);
 }
 
@@ -478,34 +509,66 @@ router.get('/icon', async (req, res) => {
     const providedIconUrl = typeof req.query.icon === 'string' ? req.query.icon.trim() : '';
 
     if (!rawUrl) {
-      return sendIcon(res, 'image/svg+xml; charset=utf-8', buildFallbackSvg('about:blank'), 3600);
+      return sendIcon(
+        req,
+        res,
+        'image/svg+xml; charset=utf-8',
+        buildFallbackSvg('about:blank'),
+        ICON_FALLBACK_MAX_AGE_SECONDS
+      );
     }
 
     const targetUrl = normalizeTargetUrl(rawUrl);
     if (isBlockedIconHost(targetUrl)) {
-      return sendIcon(res, 'image/svg+xml; charset=utf-8', buildFallbackSvg(targetUrl), 3600);
+      return sendIcon(
+        req,
+        res,
+        'image/svg+xml; charset=utf-8',
+        buildFallbackSvg(targetUrl),
+        ICON_FALLBACK_MAX_AGE_SECONDS
+      );
     }
     const cacheKey = getIconCacheKey(targetUrl);
     const cached = getCachedIcon(cacheKey);
 
     if (cached && isFreshIconCache(cached)) {
-      return sendIcon(res, cached.content_type, cached.icon_data, 86400);
+      return sendIcon(
+        req,
+        res,
+        cached.content_type,
+        cached.icon_data,
+        ICON_BROWSER_MAX_AGE_SECONDS,
+        cached.updated_at
+      );
     }
 
     const resolved = await resolveIconAsset(targetUrl, providedIconUrl || undefined);
     if (resolved) {
       upsertIconCache(cacheKey, targetUrl, resolved.iconUrl, resolved.contentType, resolved.data);
-      return sendIcon(res, resolved.contentType, resolved.data, 86400);
+      return sendIcon(req, res, resolved.contentType, resolved.data, ICON_BROWSER_MAX_AGE_SECONDS, new Date().toISOString());
     }
 
     if (cached) {
-      return sendIcon(res, cached.content_type, cached.icon_data, 3600);
+      return sendIcon(
+        req,
+        res,
+        cached.content_type,
+        cached.icon_data,
+        ICON_FALLBACK_MAX_AGE_SECONDS,
+        cached.updated_at
+      );
     }
 
-    return sendIcon(res, 'image/svg+xml; charset=utf-8', buildFallbackSvg(targetUrl), 3600);
+    return sendIcon(
+      req,
+      res,
+      'image/svg+xml; charset=utf-8',
+      buildFallbackSvg(targetUrl),
+      ICON_FALLBACK_MAX_AGE_SECONDS
+    );
   } catch (error) {
     console.error('Fetch icon error:', error);
-    return sendIcon(res, 'image/svg+xml; charset=utf-8', buildFallbackSvg('about:blank'), 300);
+    return sendIcon(req, res, 'image/svg+xml; charset=utf-8', buildFallbackSvg('about:blank'), 300);
   }
 });
 
