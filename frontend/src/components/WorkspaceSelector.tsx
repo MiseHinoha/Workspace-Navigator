@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, Edit2, Trash2, Bookmark, FolderKanban, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Bookmark, FolderKanban, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { Workspace } from '../types';
 
@@ -15,7 +15,15 @@ const WORKSPACE_ICONS = ['📁', '💼', '🚀', '📊', '🧠', '⚙️', '🧩
 export function WorkspaceSelector() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { workspaces, activeWorkspaceId, setActiveWorkspace, createWorkspace, updateWorkspace, deleteWorkspace } = useWorkspaceStore();
+  const {
+    workspaces,
+    activeWorkspaceId,
+    setActiveWorkspace,
+    createWorkspace,
+    updateWorkspace,
+    deleteWorkspace,
+    moveWorkspace,
+  } = useWorkspaceStore();
   const [isCreating, setIsCreating] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
   const [formData, setFormData] = useState<WorkspaceFormData>({ name: '', description: '', icon: '' });
@@ -99,7 +107,7 @@ export function WorkspaceSelector() {
             </button>
           </div>
 
-          {workspaces.map((workspace) => (
+          {workspaces.map((workspace, index) => (
             <div
               key={workspace.id}
               className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
@@ -118,6 +126,28 @@ export function WorkspaceSelector() {
               </div>
               
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    moveWorkspace(workspace.id, 'up');
+                  }}
+                  disabled={index === 0}
+                  className="p-1.5 text-gray-400 hover:text-blue-600 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="上移"
+                >
+                  <ArrowUp size={14} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    moveWorkspace(workspace.id, 'down');
+                  }}
+                  disabled={index === workspaces.length - 1}
+                  className="p-1.5 text-gray-400 hover:text-blue-600 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="下移"
+                >
+                  <ArrowDown size={14} />
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

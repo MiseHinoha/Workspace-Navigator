@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { Star, ChevronLeft, ChevronRight, MoreHorizontal, GripVertical } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, MoreHorizontal, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { SiteIcon } from './SiteIcon';
 
 export function FrequentBookmarksBar() {
-  const { frequentBookmarks, fetchFrequentBookmarks, bookmarks, toggleFrequent } = useWorkspaceStore();
+  const { frequentBookmarks, fetchFrequentBookmarks, bookmarks, toggleFrequent, moveFrequentBookmark } = useWorkspaceStore();
   const [showDropdown, setShowDropdown] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -161,10 +161,10 @@ export function FrequentBookmarksBar() {
                     ))
                   ) : (
                     // View mode: only show frequent bookmarks
-                    frequentBookmarks.map((bookmark) => (
+                    frequentBookmarks.map((bookmark, index) => (
                       <div
                         key={bookmark.id}
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50"
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                       >
                         <GripVertical size={14} className="text-gray-300" />
                         <a
@@ -180,8 +180,28 @@ export function FrequentBookmarksBar() {
                             className="w-4 h-4 object-contain"
                             fallbackClassName="text-xs"
                           />
-                          <span className="text-sm text-gray-700 truncate">{bookmark.title || bookmark.url || '未命名'}</span>
+                          <span className="text-sm text-gray-700 dark:text-gray-200 truncate">{bookmark.title || bookmark.url || '未命名'}</span>
                         </a>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => moveFrequentBookmark(bookmark.id, 'up')}
+                            disabled={index === 0}
+                            className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed rounded"
+                            title="上移"
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveFrequentBookmark(bookmark.id, 'down')}
+                            disabled={index === frequentBookmarks.length - 1}
+                            className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed rounded"
+                            title="下移"
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}
