@@ -2,6 +2,20 @@ import { create } from 'zustand';
 import { Workspace, Bookmark, PinnedCard, Group } from '../types';
 import { workspaceApi, bookmarkApi, groupApi } from '../utils/api';
 
+const ACTIVE_WORKSPACE_STORAGE_KEY = 'active_workspace_id';
+
+function getSavedActiveWorkspaceId() {
+  return localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+}
+
+function saveActiveWorkspaceId(id: string | null) {
+  if (id) {
+    localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, id);
+  } else {
+    localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+  }
+}
+
 interface WorkspaceState {
   workspaces: Workspace[];
   bookmarks: Bookmark[];
@@ -36,6 +50,8 @@ interface WorkspaceState {
   moveCardToGroup: (workspaceId: string, cardId: string, groupId?: string) => Promise<void>;
   unpinCard: (workspaceId: string, cardId: string) => Promise<void>;
   reorderCards: (workspaceId: string, groupId: string | null, cards: PinnedCard[]) => void;
+  moveFrequentBookmark: (id: string, direction: 'up' | 'down') => Promise<void>;
+  moveWorkspace: (id: string, direction: 'up' | 'down') => Promise<void>;
   setActiveWorkspace: (id: string | null) => void;
   setActiveGroup: (id: string | null) => void;
 }
@@ -56,7 +72,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   fetchWorkspaces: async () => {
     const { data } = await workspaceApi.getAll();
-    set({ workspaces: data });
+    const savedActiveWorkspaceId = getSavedActiveWorkspaceId();
+    const currentActiveWorkspaceId = get().activeWorkspaceId;
+    const activeWorkspaceId =
+      data.some((workspace: Workspace) => workspace.id === currentActiveWorkspaceId)
+        ? currentActiveWorkspaceId
+        : data.some((workspace: Workspace) => workspace.id === savedActiveWorkspaceId)
+          ? savedActiveWorkspaceId
+          : data[0]?.id || null;
+
+    saveActiveWorkspaceId(activeWorkspaceId);
+    set({
+      workspaces: data,
+      activeWorkspaceId,
+      activeGroupId: activeWorkspaceId && activeWorkspaceId === currentActiveWorkspaceId ? get().activeGroupId : null,
+    });
   },
 
   fetchBookmarks: async () => {
@@ -115,11 +145,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   deleteWorkspace: async (id) => {
+    const { activeWorkspaceId } = get();
     await workspaceApi.delete(id);
     await get().fetchWorkspaces();
     set((state) => ({
       pinnedCards: { ...state.pinnedCards },
     }));
+    if (activeWorkspaceId === id) {
+      const nextWorkspaceId = get().activeWorkspaceId;
+      saveActiveWorkspaceId(nextWorkspaceId);
+    }
   },
 
   createBookmark: async (data) => {
@@ -394,7 +429,82 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }));
   },
 
+  moveFrequentBookmark: async (id, direction) => {
+    const frequentBookmarks = [...get().frequentBookmarks].sort((a, b) => a.frequent_order - b.frequent_order);
+    const index = frequentBookmarks.findIndex((bookmark) => bookmark.id === id);
+    if (index === -1) return;
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= frequentBookmarks.length) return;
+
+    const reordered = [...frequentBookmarks];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(targetIndex, 0, moved);
+
+    const normalized = reordered.map((bookmark, orderIndex) => ({
+      ...bookmark,
+      frequent_order: orderIndex + 1,
+    }));
+
+    set((state) => ({
+      frequentBookmarks: normalized,
+      bookmarks: state.bookmarks.map((bookmark) => {
+        const updated = normalized.find((item) => item.id === bookmark.id);
+        return updated ? { ...bookmark, frequent_order: updated.frequent_order } : bookmark;
+      }),
+    }));
+
+    try {
+      await Promise.all(
+        normalized.map((bookmark) =>
+          bookmarkApi.update(bookmark.id, {
+            is_frequent: true,
+            frequent_order: bookmark.frequent_order,
+          })
+        )
+      );
+    } catch (error) {
+      await get().fetchBookmarks();
+      await get().fetchFrequentBookmarks();
+      throw error;
+    }
+  },
+
+  moveWorkspace: async (id, direction) => {
+    const workspaces = [...get().workspaces].sort((a, b) => a.sort_order - b.sort_order);
+    const index = workspaces.findIndex((workspace) => workspace.id === id);
+    if (index === -1) return;
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= workspaces.length) return;
+
+    const reordered = [...workspaces];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(targetIndex, 0, moved);
+
+    const normalized = reordered.map((workspace, orderIndex) => ({
+      ...workspace,
+      sort_order: orderIndex + 1,
+    }));
+
+    set({ workspaces: normalized });
+
+    try {
+      await Promise.all(
+        normalized.map((workspace) =>
+          workspaceApi.update(workspace.id, {
+            sort_order: workspace.sort_order,
+          })
+        )
+      );
+    } catch (error) {
+      await get().fetchWorkspaces();
+      throw error;
+    }
+  },
+
   setActiveWorkspace: (id) => {
+    saveActiveWorkspaceId(id);
     set({ activeWorkspaceId: id, activeGroupId: null });
   },
 
