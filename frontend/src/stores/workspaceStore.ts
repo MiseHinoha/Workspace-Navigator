@@ -51,7 +51,7 @@ interface WorkspaceState {
   unpinCard: (workspaceId: string, cardId: string) => Promise<void>;
   reorderCards: (workspaceId: string, groupId: string | null, cards: PinnedCard[]) => void;
   moveFrequentBookmark: (id: string, direction: 'up' | 'down') => Promise<void>;
-  moveWorkspace: (id: string, direction: 'up' | 'down') => Promise<void>;
+  reorderWorkspaces: (workspaces: Workspace[]) => Promise<void>;
   setActiveWorkspace: (id: string | null) => void;
   setActiveGroup: (id: string | null) => void;
 }
@@ -470,19 +470,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
   },
 
-  moveWorkspace: async (id, direction) => {
-    const workspaces = [...get().workspaces].sort((a, b) => a.sort_order - b.sort_order);
-    const index = workspaces.findIndex((workspace) => workspace.id === id);
-    if (index === -1) return;
-
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= workspaces.length) return;
-
-    const reordered = [...workspaces];
-    const [moved] = reordered.splice(index, 1);
-    reordered.splice(targetIndex, 0, moved);
-
-    const normalized = reordered.map((workspace, orderIndex) => ({
+  reorderWorkspaces: async (workspaces) => {
+    const normalized = workspaces.map((workspace, orderIndex) => ({
       ...workspace,
       sort_order: orderIndex + 1,
     }));
