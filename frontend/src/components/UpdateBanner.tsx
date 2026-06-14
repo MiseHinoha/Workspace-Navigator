@@ -66,16 +66,16 @@ export function UpdateBanner() {
 
   return (
     <div className="fixed left-1/2 top-3 z-[100] w-[min(980px,calc(100vw-1.25rem))] -translate-x-1/2 animate-fadeIn">
-      <div className="rounded-2xl border border-violet-300/50 bg-[#2f2b3fd9] px-5 py-4 shadow-[0_18px_40px_rgba(18,12,35,0.35)] backdrop-blur">
+      <div className="rounded-xl border border-blue-300/50 bg-white/95 px-5 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.18)] backdrop-blur dark:border-blue-700/60 dark:bg-gray-800/95">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
-            <p className="text-[15px] font-semibold text-violet-100">{title}</p>
+            <p className="text-[15px] font-semibold text-gray-900 dark:text-gray-100">{title}</p>
             {latestVersion.releaseNotesUrl && (
               <a
                 href={latestVersion.releaseNotesUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 inline-flex text-sm text-violet-200 underline decoration-violet-300/60 underline-offset-4 transition-colors hover:text-white"
+                className="mt-2 inline-flex text-sm text-blue-600 underline decoration-blue-300/70 underline-offset-4 transition-colors hover:text-blue-700 dark:text-blue-300 dark:decoration-blue-500/70 dark:hover:text-blue-200"
               >
                 查看这次更新内容
               </a>
@@ -86,14 +86,14 @@ export function UpdateBanner() {
             <button
               type="button"
               onClick={handleDismiss}
-              className="rounded-xl border border-violet-300/45 px-5 py-2 text-sm font-semibold text-violet-100 transition-colors hover:bg-white/8"
+              className="rounded-lg border border-gray-300 px-5 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
             >
               稍后
             </button>
             <button
               type="button"
               onClick={handleRefresh}
-              className="rounded-xl border border-violet-200 bg-violet-500/12 px-5 py-2 text-sm font-semibold text-violet-50 transition-colors hover:bg-violet-500/20"
+              className="rounded-lg border border-blue-600 bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 dark:border-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500"
             >
               立即更新
             </button>
