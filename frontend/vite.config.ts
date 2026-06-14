@@ -1,11 +1,36 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { execSync } from 'child_process';
 import packageJson from './package.json';
 
+function getGitVersion() {
+  try {
+    return execSync('git describe --tags --abbrev=0', {
+      cwd: __dirname,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim().replace(/^v/, '');
+  } catch {
+    return packageJson.version;
+  }
+}
+
+function getGitBuildId() {
+  try {
+    return execSync('git rev-parse --short HEAD', {
+      cwd: __dirname,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return `build-${new Date().toISOString()}`;
+  }
+}
+
 const APP_NAME = process.env.VITE_APP_NAME || 'Workspace Navigator';
-const APP_VERSION = process.env.VITE_APP_VERSION || packageJson.version;
-const APP_BUILD_ID = process.env.APP_BUILD_ID || `build-${new Date().toISOString()}`;
+const APP_VERSION = process.env.VITE_APP_VERSION || getGitVersion();
+const APP_BUILD_ID = process.env.APP_BUILD_ID || getGitBuildId();
 const RELEASE_NOTES_URL =
   process.env.VITE_RELEASE_NOTES_URL || 'https://github.com/MiseHinoha/Workspace-Navigator/releases';
 
