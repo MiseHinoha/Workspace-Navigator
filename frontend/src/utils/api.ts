@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import { Bookmark } from '../types';
+import { AppVersionInfo } from '../config/appVersion';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -42,6 +43,10 @@ export const authApi = {
   getRegistrationStatus: () => api.get('/auth/registration-status'),
   toggleRegistration: (enabled: boolean) =>
     api.post('/auth/toggle-registration', { enabled }),
+};
+
+export const versionApi = {
+  getCurrent: () => api.get<AppVersionInfo>('/version', { params: { t: Date.now() } }),
 };
 
 // Workspace API

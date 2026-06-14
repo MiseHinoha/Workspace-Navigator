@@ -4,6 +4,7 @@ import { useAuthStore } from './stores/authStore';
 import { Login } from './pages/Login';
 import { Home } from './pages/Home';
 import { BookmarksPage } from './pages/BookmarksPage';
+import { UpdateBanner } from './components/UpdateBanner';
 import './index.css';
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      {isAuthenticated && <UpdateBanner />}
       <Routes>
         <Route
           path="/login"
