@@ -38,6 +38,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    // The session row belongs to the account that created it; drop the id so a
+    // different account signing in on this browser starts its own row.
+    localStorage.removeItem('session_id');
     set({ user: null, isAuthenticated: false });
   },
 

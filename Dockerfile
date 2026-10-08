@@ -1,6 +1,12 @@
 # Multi-stage build for production
 FROM node:20-alpine AS builder
 
+# Version metadata is injected at build time: the build context excludes .git,
+# so `git describe` inside the image would otherwise fall back to package.json
+# and every deployment would report version 1.0.0.
+ARG APP_VERSION=
+ARG APP_BUILD_ID=
+
 # Set working directory
 WORKDIR /app
 
@@ -17,7 +23,7 @@ COPY frontend/ ./frontend/
 COPY backend/ ./backend/
 
 # Build frontend
-RUN cd frontend && npm run build
+RUN cd frontend && VITE_APP_VERSION="$APP_VERSION" APP_BUILD_ID="$APP_BUILD_ID" npm run build
 
 # Build backend
 RUN cd backend && npm run build

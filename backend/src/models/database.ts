@@ -1,4 +1,6 @@
 import Database from 'better-sqlite3';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 
@@ -217,18 +219,49 @@ export function initDatabase() {
   // Let SQLite auto-checkpoint WAL periodically (~1000 pages, default is often similar but we set explicitly).
   db.pragma('wal_autocheckpoint = 1000');
 
-  // Insert default admin user if not exists
-  const defaultPassword = '$2a$10$qgzmuGjJSYZbCGn3DkTRJOCz4EH4cw5CyafluJDsgzXnvdoRuMlDq'; // @^dhIPdZtcVR@jrd
-  const insertDefaultUser = db.prepare(`
-    INSERT OR IGNORE INTO users (id, username, password, is_admin)
-    VALUES ('admin', 'admin', ?, 1)
-  `);
-  insertDefaultUser.run(defaultPassword);
+  // Bootstrap the first administrator account.
+  // Never ship a hard-coded default password: this repository is public, so a
+  // committed hash (and its plaintext in a comment) hands every deployment in
+  // the world the same credentials. The initial password comes from
+  // ADMIN_INITIAL_PASSWORD when set, otherwise it is generated here and printed
+  // exactly once, on the run that creates the account.
+  const userCount = (db.prepare('SELECT COUNT(1) AS count FROM users').get() as { count: number }).count;
+
+  if (userCount === 0) {
+    const providedPassword = process.env.ADMIN_INITIAL_PASSWORD?.trim();
+    const useProvided = !!providedPassword && providedPassword.length >= 8;
+    const initialPassword = useProvided ? providedPassword! : crypto.randomBytes(15).toString('base64url');
+
+    db.prepare('INSERT INTO users (id, username, password, is_admin) VALUES (?, ?, ?, 1)').run(
+      'admin',
+      'admin',
+      bcrypt.hashSync(initialPassword, 10)
+    );
+
+    if (useProvided) {
+      console.log('[bootstrap] 已按 ADMIN_INITIAL_PASSWORD 创建管理员账号 admin。');
+    } else {
+      console.warn(
+        [
+          '',
+          '============================================================',
+          '[bootstrap] 已创建管理员账号（本机随机生成，只显示这一次）：',
+          `            用户名: admin`,
+          `            密码  : ${initialPassword}`,
+          '            请立即登录并在数据库中修改，或下次部署时用',
+          '            ADMIN_INITIAL_PASSWORD 指定自己的密码。',
+          '============================================================',
+          '',
+        ].join('\n')
+      );
+    }
+  }
+
 
   // Insert default settings
   const insertDefaultSettings = db.prepare(`
     INSERT OR IGNORE INTO settings (key, value)
-    VALUES ('registration_enabled', 'true')
+    VALUES ('registration_enabled', 'false')
   `);
   insertDefaultSettings.run();
 
@@ -240,6 +273,25 @@ export function runWalCheckpoint(mode: 'PASSIVE' | 'FULL' | 'RESTART' | 'TRUNCAT
     db.pragma(`wal_checkpoint(${mode})`);
   } catch (error) {
     console.warn(`WAL checkpoint (${mode}) failed:`, error);
+  }
+}
+
+/**
+ * Drop session rows that have not been touched for a while.
+ *
+ * The sync endpoint upserts one row per device, but a client that never stores
+ * the returned id (older cached frontend bundles, scripts, restarts) inserts a
+ * fresh row every 30 seconds - that is how this table reached six figures.
+ * Pruning on a timer keeps a misbehaving client from filling the disk again.
+ */
+export function pruneSessions(retentionDays = Number(process.env.SESSION_RETENTION_DAYS || 30)) {
+  const days = Number.isFinite(retentionDays) && retentionDays > 0 ? Math.floor(retentionDays) : 30;
+  try {
+    const info = db.prepare("DELETE FROM sessions WHERE last_active < datetime('now', ?)").run(`-${days} days`);
+    return info.changes;
+  } catch (error) {
+    console.warn('Session pruning failed:', error);
+    return 0;
   }
 }
 

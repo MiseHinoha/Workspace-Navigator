@@ -1,8 +1,12 @@
+// Load .env before anything reads process.env (JWT_SECRET is validated at
+// import time of the auth middleware). Inside Docker the variables come from
+// compose, so this is a no-op there.
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
-import { initDatabase, runWalCheckpoint } from './models/database';
+import { initDatabase, runWalCheckpoint, pruneSessions } from './models/database';
 import authRoutes from './routes/auth';
 import workspaceRoutes from './routes/workspaces';
 import bookmarkRoutes from './routes/bookmarks';
@@ -70,6 +74,20 @@ runWalCheckpoint('TRUNCATE');
 setInterval(() => {
   runWalCheckpoint('PASSIVE');
 }, 10 * 60 * 1000);
+
+// Session retention: keeps a client that never stores its session id (or a
+// stale cached bundle) from growing the table without bound.
+const SESSION_RETENTION_DAYS = Number(process.env.SESSION_RETENTION_DAYS || 30);
+const prunedAtBoot = pruneSessions(SESSION_RETENTION_DAYS);
+console.log(
+  `[sessions] 保留 ${SESSION_RETENTION_DAYS} 天：启动时清理 ${prunedAtBoot} 条过期会话记录`
+);
+setInterval(() => {
+  const removed = pruneSessions(SESSION_RETENTION_DAYS);
+  if (removed > 0) {
+    console.log(`[sessions] 定时清理 ${removed} 条过期会话记录`);
+  }
+}, 60 * 60 * 1000);
 
 // API routes
 app.use('/api/auth', authRoutes);

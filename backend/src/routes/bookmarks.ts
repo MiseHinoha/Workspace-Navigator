@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { createHash } from 'crypto';
 import db from '../models/database';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
 import { BookmarkRow } from '../types';
+import { safeGet, isBlockedHostname } from '../utils/net';
 
 const router = Router();
 const PERF_LOG_PREFIX = '[BOOKMARK_PERF]';
@@ -87,13 +87,13 @@ function buildCommonIconCandidates(targetUrl: string): string[] {
   ].map((pathname) => `${urlObj.origin}${pathname}`);
 }
 
+/**
+ * Hostname-level pre-check, kept for the fast path in /icon (no DNS lookup).
+ * The authoritative check - including DNS resolution and every redirect hop -
+ * happens inside safeGet(); see utils/net.ts.
+ */
 function isBlockedIconHost(targetUrl: string): boolean {
-  const hostname = new URL(targetUrl).hostname.toLowerCase();
-  if (hostname === 'localhost' || hostname === '::1' || hostname === '[::1]') return true;
-  if (/^(127|10)\./.test(hostname)) return true;
-  if (/^192\.168\./.test(hostname)) return true;
-  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)) return true;
-  return false;
+  return isBlockedHostname(targetUrl);
 }
 
 function dedupeUrls(urls: Array<string | undefined | null>): string[] {
@@ -143,15 +143,20 @@ function buildFallbackSvg(targetUrl: string): Buffer {
   return Buffer.from(svg, 'utf8');
 }
 
+const BROWSER_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+};
+
 async function fetchHtmlMetadata(targetUrl: string) {
-  const response = await axios.get(targetUrl, {
-    timeout: 10000,
+  const { response } = await safeGet(targetUrl, {
+    timeoutMs: 10000,
+    maxBytes: 5 * 1024 * 1024,
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      ...BROWSER_HEADERS,
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
     },
-    maxRedirects: 10,
   });
 
   return cheerio.load(response.data);
@@ -207,16 +212,14 @@ async function fetchMetadata(targetUrl: string): Promise<{ title?: string; icon?
 }
 
 async function fetchIconBinary(iconUrl: string): Promise<{ contentType: string; data: Buffer }> {
-  const response = await axios.get<ArrayBuffer>(iconUrl, {
+  const { response } = await safeGet(iconUrl, {
+    timeoutMs: ICON_FETCH_TIMEOUT_MS,
+    maxBytes: 2 * 1024 * 1024,
     responseType: 'arraybuffer',
-    timeout: ICON_FETCH_TIMEOUT_MS,
-    maxRedirects: 5,
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      ...BROWSER_HEADERS,
       Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
     },
-    validateStatus: (status) => status >= 200 && status < 400,
   });
 
   const contentType = String(response.headers['content-type'] || '').split(';')[0].trim();

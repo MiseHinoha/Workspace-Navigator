@@ -51,7 +51,7 @@ npm install
 npm run dev
 ```
 
-访问 http://localhost:5173，使用 admin/admin123 登录。
+访问 http://localhost:5173，使用 Mock 账号 admin/admin123 登录（Mock 服务器内置账号，与真实后端无关）。
 
 ### 方法 B：完整本地开发
 
@@ -70,15 +70,18 @@ npm run dev
 ## 首次使用
 
 1. 打开应用
-2. 使用管理员账号登录：`admin` / `admin123`
-3. 创建工作空间（如：支付产品、网站站长、个人、外包项目）
-4. 添加书签并拖拽到工作空间
-5. 使用顶部搜索栏快速搜索
+2. 使用管理员账号登录：`admin` + `.env` 里的 `ADMIN_INITIAL_PASSWORD`
+   （未设置则看容器日志中一次性打印的随机密码：`docker compose logs workspace-navigator | grep -A4 bootstrap`）
+3. 登录后在右上角「修改密码」设置自己的密码
+4. 创建工作空间（如：支付产品、网站站长、个人、外包项目）
+5. 添加书签并拖拽到工作空间
+6. 使用顶部搜索栏快速搜索
 
 ## 默认账号
 
-- **管理员账号**: admin / admin123
-- **建议**: 登录后立即修改密码（需要数据库操作）
+- **管理员账号**: `admin`
+- **初始密码**: 由 `.env` 的 `ADMIN_INITIAL_PASSWORD` 指定；留空则服务端随机生成并只在日志里打印一次
+- **建议**: 登录后立即用页面右上角的「修改密码」改成自己的密码
 
 ## 数据备份
 
@@ -101,17 +104,5 @@ ports:
   - "8080:3000"  # 使用 8080 端口
 ```
 
-### 修改管理员密码
-```bash
-# 进入容器
-docker exec -it workspace-navigator sh
-
-# 安装 bcrypt 工具
-npm install -g bcrypt-cli
-
-# 生成新密码哈希（例如：newpassword）
-bcrypt newpassword
-
-# 更新数据库
-sqlite3 /app/data/app.db "UPDATE users SET password='GENERATED_HASH' WHERE username='admin';"
-```
+### 修改密码
+在页面上操作即可：右上角「修改密码」（钥匙图标）→ 填当前密码 + 新密码。

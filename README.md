@@ -47,7 +47,8 @@ docker-compose up -d
 
 4. 访问应用
 - 打开浏览器访问 `http://your-server-ip:3000`
-- 默认管理员账号：`admin` / `admin123`
+- 管理员账号：`admin`，初始密码见 `.env` 里的 `ADMIN_INITIAL_PASSWORD`（未设置则由服务端随机生成，只在容器日志里打印一次）
+- 登录后请在页面右上角「修改密码」改成自己的密码
 
 ### 方式二：本地开发
 
@@ -100,6 +101,9 @@ npm run dev
 - 前端: http://localhost:5173
 - 后端 API: http://localhost:3000
 - Mock API: http://localhost:3001
+
+> 开发服默认把 `/api` 代理到 **3000**（真实后端）。若只想跑 Mock 服务器，请这样启动前端：
+> `VITE_DEV_PROXY_TARGET=http://localhost:3001 npm run dev`
 
 ## 部署到腾讯云轻量级服务器
 
@@ -178,14 +182,21 @@ nano .env
 
 `.env` 文件配置示例：
 ```env
-# JWT 密钥（必须修改！使用随机字符串）
-JWT_SECRET=your-random-secret-key-here-32chars-min
+# JWT 密钥（必填！必须是本机专属的随机字符串）
+# 生成：openssl rand -base64 48
+JWT_SECRET=
 
-# 端口配置
-BACKEND_PORT=3000
-FRONTEND_PORT=80
+# 初始管理员密码（可选）：数据库为空时用它创建 admin 账号
+# 留空则由服务端随机生成并在日志里打印一次
+ADMIN_INITIAL_PASSWORD=
 
-# 其他配置保持默认
+# 端口与数据目录
+PORT=3000
+DATA_DIR=/app/data
+NODE_ENV=production
+
+# 可选：设备同步会话保留天数（默认 30）
+# SESSION_RETENTION_DAYS=30
 ```
 
 ```bash
@@ -278,7 +289,7 @@ server {
 
 - HTTP：`http://your-domain.com` 或 `http://server-ip`
 - HTTPS：`https://your-domain.com`（配置 SSL 后）
-- 默认管理员账号：`admin` / `admin123`
+- 管理员账号：`admin`，初始密码见 `.env` 的 `ADMIN_INITIAL_PASSWORD`（或容器日志中一次性打印的随机密码）
 
 ---
 
@@ -401,9 +412,9 @@ tar xzvf backup-20240101.tar.gz
 ### 首次使用
 
 1. 打开应用首页
-2. 使用默认管理员账号登录：`admin` / `admin123`
-3. 建议立即修改管理员密码（通过数据库操作）
-4. 管理员可以在设置中关闭/开启注册功能
+2. 使用管理员账号登录：`admin` + `.env` 中的 `ADMIN_INITIAL_PASSWORD`（未设置则查看容器日志里一次性打印的随机密码）
+3. 登录后立即在页面右上角「修改密码」设置自己的密码
+4. 管理员可以在设置中关闭/开启注册功能（默认关闭）
 
 ### 创建工作空间
 
@@ -491,16 +502,24 @@ tar xzvf backup-20240101.tar.gz
 
 ## 常见问题
 
-### 1. 如何修改管理员密码？
+### 1. 如何修改密码？
 
-目前需要直接操作数据库：
+**推荐**：登录后在页面右上角点「修改密码」（钥匙图标），填入当前密码和新密码即可。
+
+**忘记密码时**（在服务器上重置为指定密码）：
+
 ```bash
-docker exec -it workspace-navigator sh
-sqlite3 /app/data/app.db
-UPDATE users SET password = '$2a$10$newhash...' WHERE id = 'admin';
+cd /opt/workspace-navigator   # 或你的实际部署目录
+NEW_PASSWORD='你的新密码'
+docker exec -e NEW_PASSWORD="$NEW_PASSWORD" workspace-navigator node -e '
+const bcrypt = require("bcryptjs");
+const Database = require("better-sqlite3");
+const db = new Database("/app/data/app.db");
+db.prepare("UPDATE users SET password = ? WHERE id = ?")
+  .run(bcrypt.hashSync(process.env.NEW_PASSWORD, 10), "admin");
+console.log("password updated");
+'
 ```
-
-或使用 bcrypt 生成新密码哈希后更新。
 
 ### 2. 如何备份数据？
 

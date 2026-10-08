@@ -169,7 +169,9 @@ export function Login() {
           {/* Demo hint - only show in development */}
           {import.meta.env.DEV && (
             <div className="mt-6 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-center">
-              <p className="text-xs text-gray-500 dark:text-gray-300">默认管理员账号：admin / admin123</p>
+              <p className="text-xs text-gray-500 dark:text-gray-300">
+                开发提示：连 Mock 服务器时用 admin / admin123；连真实后端时用 .env 里的 ADMIN_INITIAL_PASSWORD
+              </p>
             </div>
           )}
         </div>

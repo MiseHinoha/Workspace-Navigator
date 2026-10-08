@@ -29,8 +29,9 @@ function getGitBuildId() {
 }
 
 const APP_NAME = process.env.VITE_APP_NAME || 'Workspace Navigator';
-const APP_VERSION = process.env.VITE_APP_VERSION || getGitVersion();
-const APP_BUILD_ID = process.env.APP_BUILD_ID || getGitBuildId();
+const APP_VERSION = process.env.VITE_APP_VERSION || process.env.APP_VERSION || getGitVersion();
+const APP_BUILD_ID =
+  process.env.VITE_APP_BUILD_ID || process.env.APP_BUILD_ID || getGitBuildId();
 const RELEASE_NOTES_URL =
   process.env.VITE_RELEASE_NOTES_URL || 'https://github.com/MiseHinoha/Workspace-Navigator/releases';
 
@@ -70,7 +71,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        // Points at the real backend by default. Running the frontend against
+        // the mock server instead: VITE_DEV_PROXY_TARGET=http://localhost:3001
+        target: process.env.VITE_DEV_PROXY_TARGET || 'http://localhost:3000',
         changeOrigin: true,
       },
     },

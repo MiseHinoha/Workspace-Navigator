@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Menu, X, Settings, LogOut, Bookmark, ChevronLeft, Plus, CheckCircle } from 'lucide-react';
+import { Menu, X, Settings, LogOut, Bookmark, ChevronLeft, Plus, CheckCircle, KeyRound } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { SearchBar } from '../components/SearchBar';
@@ -9,6 +9,7 @@ import { FrequentBookmarksBar } from '../components/FrequentBookmarksBar';
 import { BookmarkDrawer } from '../components/BookmarkDrawer';
 import { QuickAddBookmark } from '../components/QuickAddBookmark';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { sessionApi } from '../utils/api';
 
 export function Home() {
@@ -28,6 +29,7 @@ export function Home() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [toast, setToast] = useState<{show: boolean; message: string; type: 'success' | 'error'}>({show: false, message: '', type: 'success'});
   const [_sessions, setSessions] = useState<any[]>([]);
 
@@ -75,13 +77,19 @@ export function Home() {
   const syncSession = async () => {
     try {
       const sessionId = localStorage.getItem('session_id');
-      await sessionApi.create({
+      const { data } = await sessionApi.create({
         session_id: sessionId || undefined,
         device_name: getDeviceName(),
         device_info: navigator.userAgent,
         tabs: [],
         active_workspace_id: activeWorkspaceId || undefined,
       });
+      // Persist the id the server assigned: without this the endpoint inserts a
+      // brand-new row on every 30s tick (that is what grew the sessions table
+      // into the hundreds of thousands of rows).
+      if (data?.id && data.id !== sessionId) {
+        localStorage.setItem('session_id', data.id);
+      }
     } catch (error) {
       console.error('Failed to sync session:', error);
     }
@@ -159,6 +167,14 @@ export function Home() {
 
               <ThemeToggle />
 
+              <button
+                onClick={() => setShowChangePassword(true)}
+                className="p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="修改密码"
+              >
+                <KeyRound size={20} />
+              </button>
+
               <span className="text-sm text-gray-600 dark:text-gray-300 hidden sm:inline">{user?.username}</span>
               
               {user?.isAdmin && (
@@ -230,6 +246,14 @@ export function Home() {
         isOpen={showQuickAdd} 
         onClose={() => setShowQuickAdd(false)}
         onSuccess={() => showToast('书签添加成功！')}
+      />
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+        onSuccess={(message) => showToast(message)}
+        onError={(message) => showToast(message, 'error')}
       />
 
       {/* Toast Notification */}

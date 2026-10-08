@@ -1,10 +1,11 @@
-version: '3.8'
-
 services:
   workspace-navigator:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-}
+        APP_BUILD_ID: ${APP_BUILD_ID:-}
     container_name: workspace-navigator
     restart: unless-stopped
     ports:
@@ -15,7 +16,9 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - DATA_DIR=/app/data
-      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
+      # Required: the app refuses to start in production without a real secret.
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set in .env (openssl rand -base64 48)}
+      - SESSION_RETENTION_DAYS=${SESSION_RETENTION_DAYS:-30}
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 30s

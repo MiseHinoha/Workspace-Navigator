@@ -43,6 +43,11 @@ export const authApi = {
   getRegistrationStatus: () => api.get('/auth/registration-status'),
   toggleRegistration: (enabled: boolean) =>
     api.post('/auth/toggle-registration', { enabled }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
 };
 
 export const versionApi = {

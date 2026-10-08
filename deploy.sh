@@ -67,13 +67,23 @@ cd $APP_DIR
 # Create .env file
 if [ ! -f ".env" ]; then
     echo -e "${YELLOW}创建环境配置文件...${NC}"
-    JWT_SECRET=$(openssl rand -base64 32)
+    JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')
+    ADMIN_INITIAL_PASSWORD=$(openssl rand -base64 18 | tr -d '\n')
+    if [ -d ".git" ]; then
+        APP_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)
+        APP_BUILD_ID=$(git rev-parse --short HEAD 2>/dev/null || true)
+    fi
     cat > .env << EOF
 JWT_SECRET=$JWT_SECRET
+ADMIN_INITIAL_PASSWORD=$ADMIN_INITIAL_PASSWORD
 PORT=3000
 NODE_ENV=production
 DATA_DIR=/app/data
+APP_VERSION=${APP_VERSION:-}
+APP_BUILD_ID=${APP_BUILD_ID:-}
 EOF
+    chmod 600 .env
+    echo -e "${GREEN}已生成随机 JWT_SECRET 与初始管理员密码${NC}"
 fi
 
 # Start the application
@@ -134,9 +144,17 @@ else
     echo -e "应用地址: ${GREEN}http://$IP:3000${NC}"
 fi
 echo ""
-echo "默认管理员账号:"
+echo "登录信息:"
 echo "  用户名: ${GREEN}admin${NC}"
-echo "  密码: ${GREEN}admin123${NC}"
+if [ -f ".env" ] && grep -q '^ADMIN_INITIAL_PASSWORD=' .env; then
+    echo "  密码  : ${GREEN}见 .env 中的 ADMIN_INITIAL_PASSWORD${NC}（首次启动时写入数据库）"
+    echo "  提示  : 登录后可在页面右上角「修改密码」里改成自己的密码"
+else
+    echo "  密码  : ${YELLOW}未在 .env 中指定，请查看容器日志中只打印一次的随机密码${NC}"
+    echo "          docker compose logs workspace-navigator | grep -A4 bootstrap"
+fi
+echo ""
+echo "${YELLOW}安全提醒：请勿把 .env 提交到仓库；JWT_SECRET 与初始密码都应在首次部署后更换。${NC}"
 echo ""
 echo "常用命令:"
 echo "  查看日志: ${YELLOW}docker-compose logs -f${NC}"

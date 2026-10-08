@@ -26,13 +26,14 @@ router.post('/', authMiddleware, (req: AuthenticatedRequest, res) => {
     const userId = req.user!.userId;
 
     let sessionId = session_id;
+    let updatedExisting = false;
 
     if (sessionId) {
-      // Update existing session
+      // Update existing session (only when it belongs to the caller)
       const stmt = db.prepare(
         'UPDATE sessions SET device_name = ?, device_info = ?, tabs = ?, active_workspace_id = ?, last_active = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?'
       );
-      stmt.run(
+      const result = stmt.run(
         device_name || null,
         device_info || null,
         JSON.stringify(tabs || []),
@@ -40,8 +41,12 @@ router.post('/', authMiddleware, (req: AuthenticatedRequest, res) => {
         sessionId,
         userId
       );
-    } else {
-      // Create new session
+      updatedExisting = result.changes > 0;
+    }
+
+    if (!updatedExisting) {
+      // Create new session. A client-supplied id that does not exist (or
+      // belongs to somebody else) must never leak that other row back.
       sessionId = uuidv4();
       const stmt = db.prepare(
         'INSERT INTO sessions (id, user_id, device_name, device_info, tabs, active_workspace_id) VALUES (?, ?, ?, ?, ?, ?)'
@@ -56,7 +61,7 @@ router.post('/', authMiddleware, (req: AuthenticatedRequest, res) => {
       );
     }
 
-    const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId) as SessionRow;
+    const session = db.prepare('SELECT * FROM sessions WHERE id = ? AND user_id = ?').get(sessionId, userId) as SessionRow;
     res.json({
       ...session,
       tabs: JSON.parse(session.tabs || '[]')

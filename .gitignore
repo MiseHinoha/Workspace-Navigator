@@ -7,7 +7,11 @@ dist/
 build/
 */dist/
 !browser-extensions/dist/*.xpi
-!browser-extensions/dist/*.crx
+
+# Extension signing keys -- a leaked key cannot be un-leaked, and it is what
+# proves an extension's identity. pack scripts regenerate one locally when absent.
+*.pem
+*.crx
 
 # Environment variables
 .env
