@@ -49,7 +49,7 @@ interface WorkspaceState {
   pinBookmark: (workspaceId: string, bookmarkId: string, groupId?: string) => Promise<void>;
   moveCardToGroup: (workspaceId: string, cardId: string, groupId?: string) => Promise<void>;
   unpinCard: (workspaceId: string, cardId: string) => Promise<void>;
-  reorderCards: (workspaceId: string, groupId: string | null, cards: PinnedCard[]) => void;
+  reorderCards: (workspaceId: string, groupId: string | null, cards: PinnedCard[]) => Promise<void>;
   moveFrequentBookmark: (id: string, direction: 'up' | 'down') => Promise<void>;
   reorderWorkspaces: (workspaces: Workspace[]) => Promise<void>;
   setActiveWorkspace: (id: string | null) => void;
@@ -419,14 +419,34 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
   },
 
-  reorderCards: (workspaceId, groupId, newCards) => {
+  reorderCards: async (workspaceId, groupId, newCards) => {
     const key = `${workspaceId}-${groupId || 'null'}`;
+    const previousCards = get().pinnedCards[key] || [];
+
+    // Optimistic update
     set((state) => ({
       pinnedCards: {
         ...state.pinnedCards,
         [key]: newCards,
       },
     }));
+
+    try {
+      // Persist each card's sort_order (skip optimistic temp ids that have no row yet)
+      await Promise.all(
+        newCards
+          .filter((card) => !card.id.startsWith('temp-'))
+          .map((card) =>
+            workspaceApi.updateCard(workspaceId, card.id, { sort_order: card.sort_order })
+          )
+      );
+    } catch (error) {
+      // Revert on error
+      set((state) => ({
+        pinnedCards: { ...state.pinnedCards, [key]: previousCards },
+      }));
+      throw error;
+    }
   },
 
   moveFrequentBookmark: async (id, direction) => {

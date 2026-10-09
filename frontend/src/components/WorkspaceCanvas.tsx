@@ -160,17 +160,17 @@ export function WorkspaceCanvas() {
       if (sourceIndex !== -1 && targetIndex !== -1) {
         const [movedCard] = newCards.splice(sourceIndex, 1);
         newCards.splice(targetIndex, 0, movedCard);
-        
-        // Update sort_order
-        newCards.forEach((card, index) => {
-          card.sort_order = index + 1;
-        });
-        
+
+        // Reindex sort_order without mutating the objects held in the store
+        const reordered = newCards.map((card, index) => ({ ...card, sort_order: index + 1 }));
+
         // Update local state immediately
-        setCards(newCards);
-        
-        // Update store
-        reorderCards(activeWorkspaceId, activeGroupId, newCards);
+        setCards(reordered);
+
+        // Update store and persist to the backend
+        reorderCards(activeWorkspaceId, activeGroupId, reordered).catch((err) => {
+          console.error('Failed to persist card order:', err);
+        });
       }
     }
     

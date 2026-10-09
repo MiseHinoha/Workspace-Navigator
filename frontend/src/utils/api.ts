@@ -72,6 +72,8 @@ export const workspaceApi = {
     }),
   moveCard: (workspaceId: string, cardId: string, groupId?: string) =>
     api.put(`/workspaces/${workspaceId}/cards/${cardId}`, { group_id: groupId }),
+  updateCard: (workspaceId: string, cardId: string, data: { group_id?: string | null; sort_order?: number }) =>
+    api.put(`/workspaces/${workspaceId}/cards/${cardId}`, data),
   removeCard: (workspaceId: string, cardId: string) =>
     api.delete(`/workspaces/${workspaceId}/cards/${cardId}`),
 };
